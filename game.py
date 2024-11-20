@@ -1,4 +1,4 @@
-# importing libraries
+# Got this code from https://www.geeksforgeeks.org/snake-game-in-python-using-pygame-module/
 import pygame
 import time
 import random
@@ -97,47 +97,59 @@ def game_over():
     # quit the program
     quit()
     # Main Function
+
+def make_random_move(snake_x,snake_y):
+    moves = [[snake_x+10,snake_y], [snake_x-10,snake_y], [snake_x,snake_y-10],[snake_x,snake_y+10]]
+    random_move =  random.choice(moves)
+    # print(f"rnadom move:{random_move}, snake_body: {snake_body}]")
+    while(random_move in snake_body):
+        random_move =  random.choice(moves)
+    return random_move
+
+
 while True:
   
-    # handling key events
-    for event in pygame.event.get():
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                change_to = 'UP'
-            if event.key == pygame.K_DOWN:
-                change_to = 'DOWN'
-            if event.key == pygame.K_LEFT:
-                change_to = 'LEFT'
-            if event.key == pygame.K_RIGHT:
-                change_to = 'RIGHT'
+    # # handling key events
+    # for event in pygame.event.get():
+    #     if event.type == pygame.KEYDOWN:
+    #         if event.key == pygame.K_UP:
+    #             change_to = 'UP'
+    #         if event.key == pygame.K_DOWN:
+    #             change_to = 'DOWN'
+    #         if event.key == pygame.K_LEFT:
+    #             change_to = 'LEFT'
+    #         if event.key == pygame.K_RIGHT:
+    #             change_to = 'RIGHT'
 
-    # If two keys pressed simultaneously 
-    # we don't want snake to move into two directions
-    # simultaneously
-    if change_to == 'UP' and direction != 'DOWN':
-        direction = 'UP'
-    if change_to == 'DOWN' and direction != 'UP':
-        direction = 'DOWN'
-    if change_to == 'LEFT' and direction != 'RIGHT':
-        direction = 'LEFT'
-    if change_to == 'RIGHT' and direction != 'LEFT':
-        direction = 'RIGHT'
+    # # If two keys pressed simultaneously 
+    # # we don't want snake to move into two directions
+    # # simultaneously
+    # if change_to == 'UP' and direction != 'DOWN':
+    #     direction = 'UP'
+    # if change_to == 'DOWN' and direction != 'UP':
+    #     direction = 'DOWN'
+    # if change_to == 'LEFT' and direction != 'RIGHT':
+    #     direction = 'LEFT'
+    # if change_to == 'RIGHT' and direction != 'LEFT':
+    #     direction = 'RIGHT'
 
-    # Moving the snake
-    if direction == 'UP':
-        snake_position[1] -= 10
-    if direction == 'DOWN':
-        snake_position[1] += 10
-    if direction == 'LEFT':
-        snake_position[0] -= 10
-    if direction == 'RIGHT':
-        snake_position[0] += 10
+    # # Moving the snake
+    # if direction == 'UP':
+    #     snake_position[1] -= 10
+    # if direction == 'DOWN':
+    #     snake_position[1] += 10
+    # if direction == 'LEFT':
+    #     snake_position[0] -= 10
+    # if direction == 'RIGHT':
+    #     snake_position[0] += 10
+    snake_position = make_random_move(snake_position[0],snake_position[1])
+
 
     # Snake body growing mechanism 
     # if fruits and snakes collide then scores will be 
     # incremented by 10
     snake_body.insert(0, list(snake_position))
-    # print(f"Snake: {snake_position}, Fruit: {fruit_position}")
+    # print(f"Snake: {snake_position}, Fruit: {fruit_position}, Snake body: {snake_body}")
 
     if snake_position[0] == fruit_position[0] and snake_position[1] == fruit_position[1]:
         score += 10
