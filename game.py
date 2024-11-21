@@ -2,6 +2,15 @@
 import pygame
 import time
 import random
+from single_agent_planner import compute_heuristics
+from single_agent_solver import SingleAgentSolver
+from run_exp import import_mapf_instance
+
+my_map, starts, goals = import_mapf_instance("exp1.txt")
+solver = SingleAgentSolver(my_map, starts, goals) 
+print("Start: ",starts[0])
+print("Goals: ",goals[0])
+
 
 snake_speed = 10
 
@@ -29,7 +38,7 @@ game_window = pygame.display.set_mode((window_x, window_y))
 # FPS (frames per second) controller
 fps = pygame.time.Clock()
 # defining snake default position 
-snake_position = [100, 50]
+snake_position = [starts[0][0]*10, starts[0][1]*10]
 
 # defining first 4 blocks of snake
 # body
@@ -38,9 +47,11 @@ snake_body = [  [100, 50],
                 [80, 50],
                 [70, 50]
             ]
-# fruit position 
-fruit_position = [random.randrange(1, (window_x//10)) * 10,
-                  random.randrange(1, (window_y//10)) * 10]
+fruit_position = [goals[0][0]*10, goals[0][1]*10]
+prev_fruit_position = starts
+
+# fruit_position = [random.randrange(1, (window_x//10)) * 10,
+#                   random.randrange(1, (window_y//10)) * 10]
 fruit_spawn = True
 
 # setting default snake direction 
@@ -68,7 +79,7 @@ def show_score(choice, color, font, size):
     game_window.blit(score_surface, score_rect)
     # game over function
 def game_over():
-  
+    print("game over", snake_position,snake_body)
     # creating font object my_font
     my_font = pygame.font.SysFont('times new roman', 50)
     
@@ -106,8 +117,12 @@ def make_random_move(snake_x,snake_y):
         random_move =  random.choice(moves)
     return random_move
 
+def find_path():
+    return solver.find_solution()
 
-while True:
+count = 0
+while True and count <1:
+    count+=1
   
     # # handling key events
     # for event in pygame.event.get():
@@ -142,54 +157,72 @@ while True:
     #     snake_position[0] -= 10
     # if direction == 'RIGHT':
     #     snake_position[0] += 10
-    snake_position = make_random_move(snake_position[0],snake_position[1])
+    # snake_position = make_random_move(snake_position[0],snake_position[1])
+    # goal_for_solver = (fruit_position[0]//10, fruit_position[1]//10)
+    # solver.goals = list(goal_for_solver)
+    # for goal in goals:
+    #         solver.heuristics = []
+    #         solver.heuristics.append(compute_heuristics(my_map, goal_for_solver))
+    # solver.heuristics = compute_heuristics(my_map,goal_for_solver)
+    # print("this is huerisitic ", solver.heuristics)
+    # solver.starts = [prev_fruit_position]
+    print("this is prev",[prev_fruit_position[0]//10, prev_fruit_position[1]//10] )
+    print("this is fruit",[fruit_position[0]//10, fruit_position[1]//10] )
 
 
+    solver = SingleAgentSolver(my_map,(prev_fruit_position[0]//10, prev_fruit_position[1]//10),(fruit_position[0]//10, fruit_position[1]//10))
+    snake_path = find_path()
+    for snake_position in snake_path[0]:
     # Snake body growing mechanism 
     # if fruits and snakes collide then scores will be 
     # incremented by 10
-    snake_body.insert(0, list(snake_position))
-    # print(f"Snake: {snake_position}, Fruit: {fruit_position}, Snake body: {snake_body}")
+        snake_position = [snake_position[0]*10, snake_position[1]* 10]
+        print("Snake pos", snake_position)
+        snake_body.insert(0, list(snake_position))
+        print(f"Snake: {snake_position}, Fruit: {fruit_position}, Snake body: {snake_body}")
 
-    if snake_position[0] == fruit_position[0] and snake_position[1] == fruit_position[1]:
-        score += 10
-        fruit_spawn = False
-    else:
-        snake_body.pop()
+        if snake_position[0] == fruit_position[0] and snake_position[1] == fruit_position[1]:
+            score += 10
+            fruit_spawn = False
+        else:
+            snake_body.pop()
+            
+        if not fruit_spawn:
+            prev_fruit_position = fruit_position
+            fruit_position = [random.randrange(1, (window_x//10)) * 10, 
+                            random.randrange(1, (window_y//10)) * 10]
+            
+        fruit_spawn = True
+        game_window.fill(black)
         
-    if not fruit_spawn:
-        fruit_position = [random.randrange(1, (window_x//10)) * 10, 
-                          random.randrange(1, (window_y//10)) * 10]
-        
-    fruit_spawn = True
-    game_window.fill(black)
-    
-    for pos in snake_body:
-        pygame.draw.rect(game_window, green, pygame.Rect(
-          pos[0], pos[1], 10, 10),border_radius=5)
-        
-    pygame.draw.rect(game_window, white, pygame.Rect(
-      fruit_position[0], fruit_position[1], 10, 10),border_radius=2)
+        for pos in snake_body:
+            # print("this is out", pos)
+            
+            pygame.draw.rect(game_window, green, pygame.Rect(
+            pos[0], pos[1], 10, 10),border_radius=5)
+            
+        pygame.draw.rect(game_window, white, pygame.Rect(
+        fruit_position[0], fruit_position[1], 10, 10),border_radius=2)
 
-    # game_window.blit(fruit_image, (fruit_position[0], fruit_position[1])) 
+        # game_window.blit(fruit_image, (fruit_position[0], fruit_position[1])) 
 
-    # Game Over conditions
-    if snake_position[0] < 0 or snake_position[0] > window_x-10:
-        game_over()
-    if snake_position[1] < 0 or snake_position[1] > window_y-10:
-        game_over()
-    
-    # Touching the snake body
-    for block in snake_body[1:]:
-        if snake_position[0] == block[0] and snake_position[1] == block[1]:
+        # Game Over conditions
+        if snake_position[0] < 0 or snake_position[0] > window_x-10:
             game_over()
-    
-    # displaying score continuously
-    show_score(1, white, 'times new roman', 20)
-    
-    # Refresh game screen
-    pygame.display.update()
+        if snake_position[1] < 0 or snake_position[1] > window_y-10:
+            game_over()
+        
+        # Touching the snake body
+        for block in snake_body[1:]:
+            if snake_position[0] == block[0] and snake_position[1] == block[1]:
+                game_over()
+        
+        # displaying score continuously
+        show_score(1, white, 'times new roman', 20)
+        
+        # Refresh game screen
+        pygame.display.update()
 
-    # Frame Per Second /Refresh Rate
-    fps.tick(snake_speed)
-    
+        # Frame Per Second /Refresh Rate
+        fps.tick(snake_speed)
+        
