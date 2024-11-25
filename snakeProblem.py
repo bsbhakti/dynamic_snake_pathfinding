@@ -43,8 +43,8 @@ class SnakeProblem:
         return valid_moves
         
     
-    def get_all_successors(self, node):
-        succ = self.possible_moves(node["loc"])
+    def get_all_successors(self, loc):
+        succ = self.possible_moves(loc)
         print("these are all the succ ", succ)
         return succ
 
