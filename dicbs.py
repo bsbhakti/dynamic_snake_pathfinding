@@ -139,7 +139,6 @@ def dicbs(agents, goals, env, dynamic_obstacles, alpha=3):
 
     paths = cbs_h2(agents, goals, env, constraints)
     if not paths:
-        print("No initial solution found.")
         return None
     ECT['Root'] = {
         'cost': sum(len(path) for path in paths),
@@ -154,7 +153,6 @@ def dicbs(agents, goals, env, dynamic_obstacles, alpha=3):
         if not EC_t and t > 0:
             conflicts = detect_conflicts(paths)
             if not conflicts:
-                print(f"No conflicts or environment changes at t={t}. Continuing to check future obstacles.")
                 t += 1
                 continue  # Ensure the loop continues until max_time
         else:
@@ -200,7 +198,6 @@ def dicbs(agents, goals, env, dynamic_obstacles, alpha=3):
                 paths[agent_id] = previous_path[:backtrack_time] + new_path
                 ECT[agent_id] = {'constraints': constraints[agent_id].copy(), 'path': paths[agent_id].copy()}
             else:
-                print(f"Could not find a path for agent {agent_id} after replanning.")
                 return None
 
         constraints = new_constraints
@@ -209,7 +206,6 @@ def dicbs(agents, goals, env, dynamic_obstacles, alpha=3):
         t += 1
 
     if not validate_paths_against_obstacles(paths, dynamic_obstacles):
-        print("Final paths violate constraints from dynamic obstacles.")
         return None
 
     return paths
@@ -226,39 +222,3 @@ def validate_paths_against_obstacles(paths, dynamic_obstacles):
             if (position, time) in obstacle_constraints:
                 return False
     return True
-
-class GridEnvironment:
-    def __init__(self, grid):
-        self.grid = grid
-        self.rows = len(grid)
-        self.cols = len(grid[0])
-
-    def is_valid(self, position):
-        x, y = position
-        return 0 <= x < self.rows and 0 <= y < self.cols and self.grid[x][y] == 0
-
-# Example Usage
-agents = [(0, 0), (4, 4)]
-goals = [(4, 4), (0, 0)]
-dynamic_obstacles = [
-    ((3, 0), 3, 2),
-    ((2, 2), 5, 2),
-    ((4, 3), 7, 1)
-]
-
-grid = [
-    [0, 0, 0, 0, 0],
-    [0, 1, 1, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 1, 0, 0, 0],
-    [0, 0, 0, 0, 0]
-]
-
-env = GridEnvironment(grid)
-paths = dicbs(agents, goals, env, dynamic_obstacles)
-
-if paths:
-    for idx, path in enumerate(paths):
-        print(f"Path for agent {idx}: {[(pos, time) for pos, time in path]}")
-else:
-    print("No solution found.")
