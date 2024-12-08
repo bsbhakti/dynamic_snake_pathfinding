@@ -44,3 +44,11 @@ def compute_heuristics(my_map, goal):
             else:
                 closed_list[child_loc] = child
                 heapq.heappush(open_list, (child_cost, child_loc, child))
+
+def get_location(path, time):
+    if time < 0:
+        return path[0]
+    elif time < len(path):
+        return path[time]
+    else:
+        return path[-1]  # wait at the goal location

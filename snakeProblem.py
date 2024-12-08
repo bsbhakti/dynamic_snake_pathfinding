@@ -5,14 +5,14 @@ from dicbs import dicbs
 
 
 class SnakeProblem:
-    def __init__(self,map):
+    def __init__(self,map, agents, goals, dynamic_obstacles):
         self.map = map
-        self.num_of_agents = 1 # change this to reflect the actual number of agents
-        self.goals = [(3,3)] # change this to be the fruit position
-        self.starts = [(0,0)]  # change this to be the snake position
+        self.goals = goals # change this to be the fruit position
+        self.starts = agents  # change this to be the snake position
         self.num_expanded = 0
-        self.maxX = 4
-        self.maxY = 4
+        self.maxX = self.map.rows
+        self.maxY = self.map.cols
+        self.dynamic_obstacles = dynamic_obstacles
         
 
         # compute heuristics for the low-level search
@@ -59,10 +59,11 @@ class SnakeProblem:
 
 
 
-    def find_solution(self,agents, goals, dynamic_obstacles):
+    def find_solution(self):
            # Measure time taken by dicbs
        
-        paths = dicbs(agents, goals, dynamic_obstacles, self)
+        paths = dicbs(self.starts, self.goals,self.heuristics, self.dynamic_obstacles, self)
+        return paths
     
 
 
