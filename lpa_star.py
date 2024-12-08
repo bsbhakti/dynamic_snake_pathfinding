@@ -11,7 +11,7 @@ path_costs = {
 }
 
 
-def lpa_star(problem, start_loc, goal_loc,agent,h_values):
+def lpa_star(start_loc, goal_loc,problem, agent_id):
     open_list = []
     rhs = {}
     gVal = {}
@@ -20,6 +20,7 @@ def lpa_star(problem, start_loc, goal_loc,agent,h_values):
     # gVal[goal_loc] = 0
     start_node = {}
     node_map = {}
+    h_values = problem.heuristics[agent_id]
 
     def calculate_key(loc):
         return min(gVal[loc],rhs[loc]) + h_values[loc], min(gVal[loc],rhs[loc])
@@ -171,6 +172,7 @@ def lpa_star(problem, start_loc, goal_loc,agent,h_values):
 
 
   
+<<<<<<< Updated upstream
 
 
     obstacles = {5:[(2,3)]} #vertex constraint
@@ -180,6 +182,9 @@ def lpa_star(problem, start_loc, goal_loc,agent,h_values):
         print("in main")
         f = 1
         endPath = []
+=======
+    def main():
+>>>>>>> Stashed changes
         initialize()
         time = 0
         while f and start_loc != goal_loc:
@@ -247,29 +252,18 @@ def lpa_star(problem, start_loc, goal_loc,agent,h_values):
             # {21} forall directed edges (u,v) with changed edge costs 
             # {22} Update the edge cost c(u,v); {23} UpdateVertex(v);
     
+<<<<<<< Updated upstream
     main(start_loc)
 
+=======
+    main()
+>>>>>>> Stashed changes
 
 
 def push_node(open_list, node_loc, priority, time):
     # print("pushing node ", node)
     heapq.heappush(open_list, (priority[0],priority[1],node_loc,time))
     # print("this is open " ,open_list)
-
-# def push_node(open_list, node, priority):
-#     loc, time = node["loc"], node["time"]
-#     if (loc, time) in node_map:
-#         existing_node = node_map[(loc, time)]
-#         existing_priority = existing_node["priority"]
-
-#         # Replace only if the new priority is better
-#         if priority < existing_priority:
-#             remove_node(open_list, existing_node, node_map)
-
-#     # Add the node to the map and heap
-#     node_map[(loc, time)] = node
-#     node["priority"] = priority  # Update the node's priority
-#     heapq.heappush(open_list, (priority[0], priority[1], time, node))
   
 
 def pop_node(open_list):

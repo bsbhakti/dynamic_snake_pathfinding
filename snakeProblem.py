@@ -1,6 +1,7 @@
 from utils import euclidean_distance, compute_heuristics
 from lpa_star import lpa_star
-import time as timer
+import time as time
+from dicbs import dicbs
 
 
 class SnakeProblem:
@@ -58,25 +59,28 @@ class SnakeProblem:
 
 
 
-    def find_solution(self):
-        start_time = timer.time()
-        result = []
+    def find_solution(self,agents, goals, dynamic_obstacles):
+           # Measure time taken by dicbs
+       
+        paths = dicbs(agents, goals, dynamic_obstacles, self)
+    
 
-        for i in range(self.num_of_agents):  # Find path for each agent
-            lpa_star(self,self.starts[i],self.goals[i],i,self.heuristics[i])
-            # if path is None:
-            #     raise BaseException('No solutions')
-            # result.append(path)
 
-        ##############################
+        # for i in range(self.num_of_agents):  # Find path for each agent
+        #         lpa_star(self,self.starts[i],self.goals[i],i,self.heuristics[i])
+                # if path is None:
+                #     raise BaseException('No solutions')
+                # result.append(path)
 
-        # self.CPU_time = timer.time() - start_time
+            ##############################
 
-        # print("\n Found a solution! \n")
-        # print("CPU time (s):    {:.2f}".format(self.CPU_time))
-        # # print("Sum of costs:    {}".format(get_sum_of_cost(result)))
+            # self.CPU_time = timer.time() - start_time
 
-        # return result
+            # print("\n Found a solution! \n")
+            # print("CPU time (s):    {:.2f}".format(self.CPU_time))
+            # # print("Sum of costs:    {}".format(get_sum_of_cost(result)))
+
+            # return result
 
 
 
