@@ -8,10 +8,10 @@ class SnakeProblem:
         self.map = map
         self.num_of_agents = 1 # change this to reflect the actual number of agents
         self.goals = [(3,3)] # change this to be the fruit position
-        self.starts = [(1,0)]  # change this to be the snake position
+        self.starts = [(0,0)]  # change this to be the snake position
         self.num_expanded = 0
-        self.maxX = 10
-        self.maxY = 10
+        self.maxX = 4
+        self.maxY = 4
         
 
         # compute heuristics for the low-level search
@@ -43,9 +43,17 @@ class SnakeProblem:
         return valid_moves
         
     
-    def get_all_successors(self, loc):
+    def get_all_successors(self, loc, time = 0):
+        # if time == 9000:
+        #     succ = self.possible_moves(loc)
+        #     if((1,2) in succ):
+        #         succ.remove((1,2))
+        #     # print("these are all the succ1 ", succ)
+
+        #     return succ
+
         succ = self.possible_moves(loc)
-        print("these are all the succ ", succ)
+        # print("these are all the succ ", succ)
         return succ
 
 
