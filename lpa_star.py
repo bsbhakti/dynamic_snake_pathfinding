@@ -11,7 +11,7 @@ path_costs = {
 }
 
 
-def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics):
+def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraints=None):
     open_list = []
     rhs = {}
     gVal = {}
@@ -20,7 +20,16 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics):
     # gVal[goal_loc] = 0
     start_node = {}
     node_map = {}
+    vertex_cons = None
+    edge_cons = None
+    print("received this cons for agent isnide lpa ", agent_id, agent_constraints)
     h_values = heuristics[agent_id]
+    if(agent_constraints):
+        vertex_cons = agent_constraints["env"] +(agent_constraints["vertex"])
+        edge_cons = agent_constraints["edge"]
+        print("this is vertex cons and env obstacles inside lpa ", vertex_cons)
+        print("this is edge cons inside lpa ", edge_cons)
+
 
     def calculate_key(loc):
         return min(gVal[loc],rhs[loc]) + h_values[loc], min(gVal[loc],rhs[loc])
@@ -31,6 +40,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics):
             # #print("init this state ", state)
             rhs[state] = gVal[state] = float('inf')
         print("this is in init ", start_loc, goal_loc)
+        print('this is agent cons inside lpa ', agent_constraints)
         rhs[start_loc] = 0
         start_node["loc"] = start_loc
         start_node['g_val']= gVal[start_loc] 
@@ -43,7 +53,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics):
         # #print("calling push1")
         push_node(open_list,start_node["loc"], calculate_key(start_loc),0)
 
-    def update_vertex(node_loc, node_time):
+    def update_vertex(node_loc, node_time, agent_cons= None):
         loc = node_loc
         c = 1
         #print("calling next vertex on ", node_loc)
@@ -174,10 +184,10 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics):
 
   
 
-    # obstacles = {5:[(2,3)]} #vertex constraint
-    obstacles = {}
-    # obstacles_edge = {4: [[(1,3), (2,3)]] } #edge constraint
-    obstacles_edge = { } #edge constraint
+    # # obstacles = {5:[(2,3)]} #vertex constraint
+    # obstacles = {}
+    # # obstacles_edge = {4: [[(1,3), (2,3)]] } #edge constraint
+    # obstacles_edge = { } #edge constraint
 
     def main(start_loc):
         #print("in main")
@@ -196,8 +206,8 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics):
                 next_pos = path[i+1]
                 endPath.append(pos)
                 #print("this is curr->next ", pos, next_pos)
-                if(i+1 in obstacles):
-                    cons = obstacles[i+1]
+                if(vertex_cons and i+1 in vertex_cons):
+                    cons = vertex_cons[i+1]
                     #print(i+1," time is constrained ", cons)
                   
                     if(next_pos in cons):
@@ -212,8 +222,8 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics):
                     else:
                         #print("loc not const")
                         break
-                if(i in obstacles_edge):
-                    consts = obstacles_edge[i]
+                if(edge_cons and i in edge_cons):
+                    consts = edge_cons[i]
                     #print("edge")
                     for const in consts:
                         #print("look edge cons ", const)
@@ -251,7 +261,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics):
 
 def push_node(open_list, node_loc, priority, time):
     # #print("pushing node ", node)
-    heapq.heappush(open_list, (priority[0],priority[1],node_loc,time))
+    heapq.heappush(open_list, (priority[0],priority[1],time,node_loc,))
     # #print("this is open " ,open_list)
   
 

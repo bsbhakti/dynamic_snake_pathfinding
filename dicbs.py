@@ -177,7 +177,8 @@ def detect_conflicts(paths):
 def cbs_h2(agents, goals, heuristics, constraints_per_agent, problem):
     paths = []
     for agent_id, (agent, goal) in enumerate(zip(agents, goals)):
-        constraints = constraints_per_agent.get(agent_id, set())
+        constraints = constraints_per_agent.get(agent_id, {})
+      
         path = lpa_star(agent,goal,problem,agent_id, heuristics)
         # path = slpa_search(agent,goal,problem.map)
         if not path:
@@ -197,7 +198,8 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
     t = 0
     EC = set()
     ECT = {}
-    constraints = {agent_id: {} for agent_id in range(len(agents))}
+    constraints = {agent_id: {"vertex":[], "edge": [], 'env': []} for agent_id in range(len(agents))}
+    # print("beg cons", constraints)
 
     paths = cbs_h2(agents, goals, heuristics, constraints, problem)
   
@@ -212,15 +214,17 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
     max_time = max(start_time + duration for _, start_time, duration in dynamic_obstacles)
 
     while t <= max_time:
+        print("Iteration: ", t)
         EC_t = environment_changes(EC, t, dynamic_obstacles)
+        print("This is change ", EC_t)
         if not EC_t and t > 0:
             collisions = detect_collisions(paths)
             print("this is collision ", collisions)
-            
             if not collisions:
                 print("no conflict and env change")
                 t += 1
                 continue  # Ensure the loop continues until max_time
+            #if you have collisions you need to add constraints??
 
         else:
             EC = EC_t.copy()
@@ -246,8 +250,12 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
                     print("this is change ", change)
                     print("this agent is affected ", agent_id)
                     agent_constraints = new_constraints[agent_id]
-                    agent_constraints['env'] = change
+                    agent_constraints['env'].append(change)
                     affected_agents.add(agent_id)
+                    print("this is agent constraints for affected agent ", agent_id,  agent_constraints['env'])
+                    new_constraints[agent_id] = agent_constraints
+        print("this is affected agents and their cons", affected_agents, new_constraints)
+
 
 
         # for agent_id in range(len(agents)):
@@ -284,7 +292,6 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
         #         constraints[agent2].add((conflict_data, time))  # Prevent agent2 from entering at the same time
         #     # affected_agents.update([agent1, agent2])
 
-        print("this is affected agents ", affected_agents)
         for agent_id in affected_agents:
             backtrack_time = max(0, t - alpha)
             previous_path = paths[agent_id]
@@ -297,10 +304,11 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
             #     start_position, goals[agent_id], env,
             #     constraints[agent_id], start_time=start_time
             # )
-            print("trying to find new path ", start_position, goals[agent_id])
+            print("trying to find new path for agent with cons ",agent_id, new_constraints[agent_id])
             new_path = None
-            new_path = lpa_star(start_position,goals[agent_id], problem, agent_id, heuristics)
+            new_path = lpa_star(start_position,goals[agent_id], problem, agent_id, heuristics,new_constraints[agent_id] )
             if new_path:
+                print("new path found for agent ", agent_id , new_path)
                 paths[agent_id] = previous_path[:backtrack_time] + new_path
                 ECT[agent_id] = {'constraints': constraints[agent_id].copy(), 'path': paths[agent_id].copy()}
             else:
