@@ -7,7 +7,7 @@ from single_agent_solver import SingleAgentSolver
 from run_exp import import_mapf_instance
 
 my_map, starts, goals = import_mapf_instance("exp1.txt")
-solver = SingleAgentSolver(my_map, starts, goals) 
+# solver = SingleAgentSolver(my_map, starts, goals) 
 print("Start: ",starts[0])
 print("Goals: ",goals[0])
 
@@ -48,7 +48,7 @@ snake_body = [  [100, 50],
                 [70, 50]
             ]
 fruit_position = [goals[0][0]*10, goals[0][1]*10]
-prev_fruit_position = starts
+prev_fruit_position = starts[0]
 
 # fruit_position = [random.randrange(1, (window_x//10)) * 10,
 #                   random.randrange(1, (window_y//10)) * 10]
@@ -164,13 +164,17 @@ while True and count <1:
     #         solver.heuristics = []
     #         solver.heuristics.append(compute_heuristics(my_map, goal_for_solver))
     # solver.heuristics = compute_heuristics(my_map,goal_for_solver)
-    # print("this is huerisitic ", solver.heuristics)
+    # print("this is huerisitic ", 
+    # 
+    # solver.heuristics)
     # solver.starts = [prev_fruit_position]
-    print("this is prev",[prev_fruit_position[0]//10, prev_fruit_position[1]//10] )
-    print("this is fruit",[fruit_position[0]//10, fruit_position[1]//10] )
+    # print("this is prev",[prev_fruit_position[0]//10, prev_fruit_position[1]//10] )
+    print("this is fruit",[fruit_position] )
+    print("this is prvfruit",prev_fruit_position)
+    # prev_fruit_position = [prev_fruit_position[0] // 10, prev_fruit_position[1] // 10]
 
 
-    solver = SingleAgentSolver(my_map,(prev_fruit_position[0]//10, prev_fruit_position[1]//10),(fruit_position[0]//10, fruit_position[1]//10))
+    solver = SingleAgentSolver(my_map,[(prev_fruit_position[0], prev_fruit_position[1])],[(fruit_position[0]//10, fruit_position[1]//10)], True)
     snake_path = find_path()
     for snake_position in snake_path[0]:
     # Snake body growing mechanism 

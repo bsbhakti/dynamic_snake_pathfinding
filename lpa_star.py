@@ -31,8 +31,8 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
         print("this is edge cons inside lpa ", edge_cons)
 
 
-    def calculate_key(loc):
-        return min(gVal[loc],rhs[loc]) + h_values[loc], min(gVal[loc],rhs[loc])
+    def calculate_key(loc, time):
+        return min(gVal[loc],rhs[loc]) + h_values[loc], min(gVal[loc],rhs[loc]), time
 
 
     def initialize():
@@ -47,11 +47,11 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
         start_node['h_val']= h_values[start_loc]
         start_node['parent']=  "root"
         start_node['time'] = 0
-        start_node['priority'] = calculate_key(start_loc)
+        start_node['priority'] = calculate_key(start_loc, 0)
 
         rhs[start_loc] = 0
         # #print("calling push1")
-        push_node(open_list,start_node["loc"], calculate_key(start_loc),0)
+        push_node(open_list,start_node["loc"], calculate_key(start_loc, 0),0)
 
     def update_vertex(node_loc, node_time, agent_cons= None):
         loc = node_loc
@@ -101,7 +101,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
                     # node["parent"] = node_map[(succ,node["time"]-1)]
             # #print("updating rhs of loc", node["loc"], m)
             # rhs[node["loc"]] = m
-        k = calculate_key(node_loc)
+        k = calculate_key(node_loc,node_time)
 
         # if node_map.get((loc, node["time"])):  # If node exisats in the map
         remove_node(open_list, node_loc, node_time)
@@ -124,7 +124,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
 
     def compute_shortest_path(time = 0):
         # #print("this is goal node's priority",calculate_key(goal_loc))
-        while (top_key(open_list)[0] < calculate_key(goal_loc)[0] or top_key(open_list)[1] < calculate_key(goal_loc)[1])  or rhs[goal_loc] != gVal[goal_loc]:
+        while (top_key(open_list)[0] < calculate_key(goal_loc, time)[0] or top_key(open_list)[1] < calculate_key(goal_loc,time)[1])  or rhs[goal_loc] != gVal[goal_loc]:
             (loc,time) = pop_node(open_list)
             #print("node pooped", loc, time)
 
@@ -139,7 +139,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
                     #     'parent': node,
                     #     'time': node['time'] + 1,
                     #     'priority': calculate_key(succ) }
-                    child_priority  = calculate_key(succ)
+                    child_priority  = calculate_key(succ, time)
                     #print("calling update here1",child_priority)
                     update_vertex(succ,time)
             else:
@@ -261,14 +261,14 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
 
 def push_node(open_list, node_loc, priority, time):
     # #print("pushing node ", node)
-    heapq.heappush(open_list, (priority[0],priority[1],time,node_loc,))
+    heapq.heappush(open_list, (priority[0],priority[1],time,node_loc))
     # #print("this is open " ,open_list)
   
 
 def pop_node(open_list):
     if(len(open_list) == 0):
         return
-    _, _, loc,time = heapq.heappop(open_list)
+    _, _, time,loc = heapq.heappop(open_list)
     return (loc,time)
 
 
@@ -287,12 +287,12 @@ def remove_node(open_list, node_loc, time):
     a = pop_node(open_list)
 
 def update(open_list, node_loc, priority,time):
-    for index, (p1, p2, loc,t) in enumerate(open_list):
-        if node_loc == loc:
+    for index, (p1, p2,t, loc) in enumerate(open_list):
+        if node_loc == loc and t == time:
                 if (p1,p2) <= priority:
                     break
                 del open_list[index]
-                open_list.append((priority[0],priority[1],loc, time))
+                open_list.append((priority[0],priority[1], time, loc))
                 heapq.heapify(open_list)
                 break
     else:
@@ -304,3 +304,6 @@ def compare_nodes(n1, n2):
     return n1['g_val'] + n1['h_val'] < n2['g_val'] + n2['h_val']
 
 
+
+
+#get all successors returns the actual pos and the obstructed pos. the obs pos will then be set to inf

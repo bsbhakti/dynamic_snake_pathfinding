@@ -27,8 +27,8 @@ def compute_heuristics(my_map, goal):
         for dir in range(4):
             child_loc = move(loc, dir)
             child_cost = cost + 1
-            if child_loc[0] < 0 or child_loc[0] >= len(my_map) \
-               or child_loc[1] < 0 or child_loc[1] >= len(my_map[0]):
+            if child_loc[0] <= 0 or child_loc[0] >= len(my_map) \
+               or child_loc[1] <= 0 or child_loc[1] >= len(my_map[0]):
                continue
             if my_map[child_loc[0]][child_loc[1]]:
                 continue
@@ -184,7 +184,7 @@ def a_star(my_map,start_loc, goal_loc, h_values, agent, constraints, upperbound,
     ##############################
     # Task 1.1: Extend the A* search to search in the space-time domain
     #           rather than space domain, only.
-
+    print("calling a star ", start_loc, goal_loc)
     open_list = []
     closed_list = dict()
     # print("a star is getting thies ", constraints)

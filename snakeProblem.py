@@ -44,7 +44,7 @@ class SnakeProblem:
         return valid_moves
         
     
-    def get_all_successors(self, loc, time = 0):
+    def get_all_successors(self, loc,agent_cons, time = 0):
         # if time == 9000:
         #     succ = self.possible_moves(loc)
         #     if((1,2) in succ):
@@ -54,6 +54,8 @@ class SnakeProblem:
         #     return succ
 
         succ = self.possible_moves(loc)
+        invalid_succ = []
+        
         # print("these are all the succ ", succ)
         return succ
 
