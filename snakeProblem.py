@@ -1,6 +1,5 @@
 from single_agent_planner import is_constrained
 from utils import euclidean_distance, compute_heuristics
-from lpa_star import lpa_star
 import time as time
 from dicbs import dicbs
 
@@ -38,7 +37,9 @@ class SnakeProblem:
         right  = (loc[0]+1, loc[1] )
         down = (loc[0], loc[1]-1 )
         up = (loc[0], loc[1]+1)
-        moves = [left, right, down, up]
+        wait = (loc[0], loc[1])
+
+        moves = [left, right, down, up, wait]
         # return [ ,, ,, (loc[0], loc[1] )  ] #does the snake wait?
         # print("moves", moves)
         valid_moves = [move for move in moves if 0 <= move[0] < self.maxX and 0 <= move[1] < self.maxY]
@@ -76,7 +77,6 @@ class SnakeProblem:
         for pos in succ:
             # print("calling is_cons on ", pos,curr_time,agent_cons)
             if(self.is_constrained(pos, curr_time,agent_cons)):
-                print("pos cons ", pos, curr_time)
                 invalid_succ.append(pos)
             
         

@@ -189,8 +189,8 @@ def cbs_h2(agents, goals, heuristics, constraints_per_agent, problem):
     return paths
 
 def is_agent_affected(path, EC_t):
-    for i,pos in enumerate(path):
-        if (pos, i) in EC_t:
+    for (pos,time) in (path):
+        if (pos, time) in EC_t:
             return True
     return False
 
@@ -270,9 +270,8 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
                     agent_constraints["negative"]['env'][change[1]] = [change[0]]
 
                     affected_agents.add(agent_id)
-                    print("this is agent constraints for affected agent ", agent_id,  agent_constraints['env'])
+                    print("this is agent constraints for affected agent ", agent_id,  agent_constraints["negative"]['env'])
                     new_constraints[agent_id] = agent_constraints
-        # print("this is affected agents and their cons", affected_agents, new_constraints)
 
 
 
@@ -300,6 +299,8 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
 
                 # new_constraints[agent].add(constraint)
                 print("new constraints for agent after adding ", agent, new_constraints)
+        print("this is affected agents and their cons", affected_agents, new_constraints)
+        
 
         # conflicts = detect_conflicts(paths)
         # for conflict_type, agent1, agent2, conflict_data, time in conflicts:
@@ -326,19 +327,17 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
 
             start_position = previous_path[backtrack_time]
             start_time = len(previous_path) - backtrack_time
-            # new_path = slpa_search(
-            #     start_position, goals[agent_id], env,
-            #     constraints[agent_id], start_time=start_time
-            # )
-            print("trying to find new path for agent with cons ",agent_id, new_constraints[agent_id])
+            print("here")
+            print("trying to find new path for agent with cons ",agent_id, new_constraints[agent_id], start_position[0])
             new_path = None
-            new_path = lpa_star(start_position,goals[agent_id], problem, agent_id, heuristics,new_constraints[agent_id] )
+            new_path = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,new_constraints[agent_id], True )
             if new_path:
                 print("new path found for agent ", agent_id , new_path)
                 paths[agent_id] = previous_path[:backtrack_time] + new_path
                 ECT[agent_id] = {'constraints': constraints[agent_id].copy(), 'path': paths[agent_id].copy()}
             else:
                 return None
+         
 
         constraints = new_constraints
         ECT['Root']['constraints'] = {agent_id: constraints[agent_id].copy() for agent_id in constraints}
