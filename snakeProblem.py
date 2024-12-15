@@ -1,3 +1,4 @@
+from single_agent_planner import is_constrained
 from utils import euclidean_distance, compute_heuristics
 from lpa_star import lpa_star
 import time as time
@@ -42,9 +43,47 @@ class SnakeProblem:
         # print("moves", moves)
         valid_moves = [move for move in moves if 0 <= move[0] < self.maxX and 0 <= move[1] < self.maxY]
         return valid_moves
-        
+
+    def is_constrained(self,loc,time,agent_cons):
+        if(agent_cons):
+            if(time in agent_cons["vertex"]):
+                if(loc in agent_cons["vertex"][time]):
+                    return True
+
+            if(time in agent_cons["edge"]):
+                if(loc in agent_cons["edge"][time]):
+                    return True
+
+            if(time in agent_cons["env"]):
+                if(loc in agent_cons["env"][time]):
+                    return True
+        return False
+
+
     
-    def get_all_successors(self, loc,agent_cons, time = 0):
+    def get_all_successors(self, loc,agent_cons, curr_time = 0):
+        # if time == 9000:
+        #     succ = self.possible_moves(loc)
+        #     if((1,2) in succ):
+        #         succ.remove((1,2))
+        #     # print("these are all the succ1 ", succ)
+
+        #     return succ
+        # print("this is agent cons", agent_cons)
+
+        succ = self.possible_moves(loc)
+        invalid_succ = []
+        for pos in succ:
+            # print("calling is_cons on ", pos,curr_time,agent_cons)
+            if(self.is_constrained(pos, curr_time,agent_cons)):
+                print("pos cons ", pos, curr_time)
+                invalid_succ.append(pos)
+            
+        
+        # print("these are all the succ ", succ, invalid_succ)
+        return (succ,invalid_succ)
+
+    def get_all_predecessors(self, loc,agent_cons, time = 0):
         # if time == 9000:
         #     succ = self.possible_moves(loc)
         #     if((1,2) in succ):
@@ -58,6 +97,7 @@ class SnakeProblem:
         
         # print("these are all the succ ", succ)
         return succ
+
 
 
 

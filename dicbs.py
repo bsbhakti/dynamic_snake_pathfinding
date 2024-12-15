@@ -194,11 +194,27 @@ def is_agent_affected(path, EC_t):
             return True
     return False
 
+def add_cons(type, time, loc, agent_id, all_cons,type2 ): #type is if its pos or negatove type2 is vertex edge
+    if type not in all_cons[agent_id]:
+        all_cons[agent_id][type] = {}
+    if type2 not in all_cons[agent_id][type]:
+        all_cons[agent_id][type][type2] = {}
+    if time not in all_cons[agent_id][type][type2]:
+            all_cons[agent_id][type][type2][time] = []
+
+    # Append the location to the list
+    if loc not in all_cons[agent_id][type][type2][time]:
+        all_cons[agent_id][type][type2][time].append(loc)
+    print("here", loc, all_cons)  # You should now see this print statement
+    return all_cons
+
+
+    
 def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agents is start loc of agents
     t = 0
     EC = set()
     ECT = {}
-    constraints = {agent_id: {"vertex":[], "edge": [], 'env': []} for agent_id in range(len(agents))}
+    constraints = {agent_id: {"positive":{"vertex":{}, "edge": {}, 'env': {}},"negative":{"vertex":{}, "edge": {}, 'env': {}}} for agent_id in range(len(agents))}
     # print("beg cons", constraints)
 
     paths = cbs_h2(agents, goals, heuristics, constraints, problem)
@@ -228,13 +244,13 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
 
         else:
             EC = EC_t.copy()
-        print("this is ECT ", EC_t)
+        # print("this is ECT ", EC_t)
 
         new_constraints = {agent_id: constraints[agent_id].copy() for agent_id in constraints}
         affected_agents = set()
 
-        print("this is ECT ", EC_t)
-        print("this is new constraints ", new_constraints)
+        # print("this is ECT ", EC_t)
+        # print("this is new constraints ", new_constraints)
         print("affected agent before ", affected_agents)
 
         # for agent_id, path in enumerate(paths):
@@ -250,11 +266,13 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
                     print("this is change ", change)
                     print("this agent is affected ", agent_id)
                     agent_constraints = new_constraints[agent_id]
-                    agent_constraints['env'].append(change)
+                    # agent_constraints['env'].append(change)
+                    agent_constraints["negative"]['env'][change[1]] = [change[0]]
+
                     affected_agents.add(agent_id)
                     print("this is agent constraints for affected agent ", agent_id,  agent_constraints['env'])
                     new_constraints[agent_id] = agent_constraints
-        print("this is affected agents and their cons", affected_agents, new_constraints)
+        # print("this is affected agents and their cons", affected_agents, new_constraints)
 
 
 
@@ -267,13 +285,21 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
         #         print("this agent is affected ", agent_id)
         #         affected_agents.add(agent_id)
         collisions = detect_collisions(paths)
+        # print("these are the collisions ", collisions)
         if(len(collisions) > 0):
             collision_cons = standard_splitting(collisions[0])
-            print("these are the constraints ", collision_cons)
+            # print("these are the constraints ", collision_cons)
 
             for constraint in collision_cons:
                 agent = constraint["agent"]
-                new_constraints[agent].add(constraint)
+                affected_agents.add(agent)
+                if constraint["vertex"]:
+                    new_constraints = add_cons("negative",constraint['timestep'],constraint['loc'][0],agent,new_constraints,"vertex")
+                else:
+                    new_constraints = add_cons("negative",constraint['timestep'],constraint['loc'],agent,new_constraints,"edge")
+
+                # new_constraints[agent].add(constraint)
+                print("new constraints for agent after adding ", agent, new_constraints)
 
         # conflicts = detect_conflicts(paths)
         # for conflict_type, agent1, agent2, conflict_data, time in conflicts:

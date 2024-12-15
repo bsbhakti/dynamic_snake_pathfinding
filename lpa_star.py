@@ -1,4 +1,7 @@
 import heapq
+from collections import defaultdict
+
+from single_agent_planner import is_constrained
 path_costs = {
     ((0, 0), (0, 1)): 1,  # Right from (0,0) to (0,1)
     ((0, 1), (0, 0)): 1,  # Left from (0,1) to (0,0)
@@ -13,32 +16,41 @@ path_costs = {
 
 def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraints=None):
     open_list = []
-    rhs = {}
-    gVal = {}
+    rhs = defaultdict(lambda: float('inf'))  # Lazy initialization to inf
+    gVal = defaultdict(lambda: float('inf'))  # Lazy initialization to inf
     #print("this is goal", goal_loc)
     # rhs[goal_loc] = 
     # gVal[goal_loc] = 0
     start_node = {}
     node_map = {}
-    vertex_cons = None
+    vertex_cons = {}
     edge_cons = None
     print("received this cons for agent isnide lpa ", agent_id, agent_constraints)
     h_values = heuristics[agent_id]
     if(agent_constraints):
-        vertex_cons = agent_constraints["env"] +(agent_constraints["vertex"])
+        agent_constraints = agent_constraints["negative"] #JUST EXTRACTING NEGATIVE FOR NOW
+        for i in agent_constraints["env"]:
+            if(i in agent_constraints["vertex"]):
+                vertex_cons[i] = agent_constraints["env"][i],agent_constraints["vertex"][i]
+            else:
+                vertex_cons[i] = agent_constraints["env"][i]
+
+        for i in agent_constraints["vertex"]:
+            if(i not in vertex_cons):
+                vertex_cons[i] = agent_constraints["vertex"][i]
+        print(vertex_cons,"look here")
+        # vertex_cons = agent_constraints["env"] + agent_constraints["vertex"]
         edge_cons = agent_constraints["edge"]
         print("this is vertex cons and env obstacles inside lpa ", vertex_cons)
         print("this is edge cons inside lpa ", edge_cons)
 
 
     def calculate_key(loc, time):
-        return min(gVal[loc],rhs[loc]) + h_values[loc], min(gVal[loc],rhs[loc]), time
+        return min(gVal[(loc, time)], rhs[(loc, time)]) + h_values[loc] + time, min(gVal[(loc, time)], rhs[(loc, )])
 
 
     def initialize():
-        for state in problem.get_all_states():
-            # #print("init this state ", state)
-            rhs[state] = gVal[state] = float('inf')
+       
         print("this is in init ", start_loc, goal_loc)
         print('this is agent cons inside lpa ', agent_constraints)
         rhs[start_loc] = 0
@@ -49,48 +61,68 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
         start_node['time'] = 0
         start_node['priority'] = calculate_key(start_loc, 0)
 
-        rhs[start_loc] = 0
+        # rhs[start_loc] = 0
+        rhs[(start_loc, 0)] = 0
+        push_node(open_list, (start_loc, 0), calculate_key(start_loc, 0))
         # #print("calling push1")
-        push_node(open_list,start_node["loc"], calculate_key(start_loc, 0),0)
+        # push_node(open_list,start_node["loc"], calculate_key(start_loc, 0),0)
 
-    def update_vertex(node_loc, node_time, agent_cons= None):
+    def update_vertex(node_loc, node_time, agent_cons= None, is_constrained=False):
         loc = node_loc
         c = 1
-        #print("calling next vertex on ", node_loc)
+        print("calling next vertex on ", node_loc)
         if node_loc != start_loc:
             m = float('inf')
             #print("calling succ3")
             # should be calling pred but because pred and succ are the same here we call succ
-            next_states = problem.get_all_successors(node_loc,node_time)
-            
+            next_states,invalid_succ = problem.get_all_successors(node_loc,agent_cons,node_time)
+            print("this is invalid succ ", invalid_succ, next_states)
+            rhs[node_loc] = float('inf')
             for succ  in next_states:
-                if(node_time == 9000 and succ == (2,3)):
+                # VERTEX AND ENV CONS
+                if(succ in invalid_succ):
+                    print("invalidating c ", succ, node_time)
                     c = float('inf')
+                    gVal[succ] = float('inf')
+                    rhs[succ] = float('inf')
+
                     # rhs[succ] = float('inf')
                 else:
                     c = 1
-                if(node_time == 9000 and node_loc == (2,3)):
-                    gVal[loc] = float('inf')
-                    rhs[loc] = float('inf')
-                    c = float('inf')
+                # if(succ in invalid_succ):
+                #     print("invalidating gval and rhs ", succ, node_time)
+                #     gVal[loc] = float('inf')
+                #     rhs[loc] = float('inf')
+                #     c = float('inf')
+                # if(is_constrained):
+                #     print("invalidating edge ", succ,node_loc, node_time)
+                #     c = float('inf')
+                #     # rhs[succ] = float('inf')
+                # else:
+                #     c = 1
+                # if(is_constrained):
+                #     print("invalidating gval and rhs ",  succ,node_loc, node_time)
+                #     gVal[loc] = float('inf')
+                #     rhs[loc] = float('inf')
+                #     c = float('inf')
 
-
-                if(node_time == 9000 and succ == (1,3) and node_loc == (2,3)):
-                    #print("updating edge costs between ", succ, node_loc)
-                    c = float('inf')
-                    # rhs[succ] = float('inf')
-                else:
-                    c = 1
-                if(node_time == 9000 and succ == (1,3) and node_loc == (2,3)):
-                    gVal[loc] = float('inf')
-                    rhs[loc] = float('inf')
-                    c = float('inf')
+                # # EDGE CONS
+                # if(node_time == 9000 and succ == (1,3) and node_loc == (2,3)):
+                #     #print("updating edge costs between ", succ, node_loc)
+                #     c = float('inf')
+                #     # rhs[succ] = float('inf')
+                # else:
+                #     c = 1
+                # if(node_time == 9000 and succ == (1,3) and node_loc == (2,3)):
+                #     gVal[loc] = float('inf')
+                #     rhs[loc] = float('inf')
+                #     c = float('inf')
                 
                 
                 new_gval = gVal[succ]+c
                 #print("prev rhs of loc ", loc,  rhs[node_loc])
                 rhs[node_loc] = min(rhs[node_loc], new_gval)
-                #print("updated rhs of loc ", loc,  rhs[node_loc], succ)
+                # print("updated rhs of loc ", loc,  rhs[node_loc],gVal[node_loc], succ)
 
                 # if(rhs[succ] < new_gval ):
                 #     rhs[node_loc] = min(rhs[node_loc], new_gval)
@@ -109,7 +141,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
         #print("removing node, new priority",k,node_loc)
         if gVal[loc] != rhs[loc]:
             # node["priority"] = k
-            #print("pushing node", node_loc)
+            print("pushing node", node_loc, gVal[node_loc])
             # node["time"] = node["time"] + 1
             push_node(open_list, node_loc, k, node_time)
             #print("new open list", open_list)
@@ -122,7 +154,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
         #     push_node(open_list, node, calculate_key(node["loc"]),node_map)
         #print("done")
 
-    def compute_shortest_path(time = 0):
+    def compute_shortest_path(agent_cons=None, time = 0):
         # #print("this is goal node's priority",calculate_key(goal_loc))
         while (top_key(open_list)[0] < calculate_key(goal_loc, time)[0] or top_key(open_list)[1] < calculate_key(goal_loc,time)[1])  or rhs[goal_loc] != gVal[goal_loc]:
             (loc,time) = pop_node(open_list)
@@ -132,20 +164,23 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
                 gVal[loc] = rhs[loc]
                 # node["g_val"] = rhs[node["loc"]]
                 #print("updated gVal of node with loc ",loc,  gVal[loc])
-                for succ in problem.get_all_successors(loc,time):
+                succs,_ =  problem.get_all_successors(loc,agent_cons,time)
+                for succ in succs:
+                    # print("got succ", succ)
                     # child = {'loc': succ,
                     #     'g_val': node['g_val'] + 1,
                     #     'h_val': h_values[succ],
                     #     'parent': node,
                     #     'time': node['time'] + 1,
                     #     'priority': calculate_key(succ) }
-                    child_priority  = calculate_key(succ, time)
+                    # child_priority  = calculate_key(succ, time)
                     #print("calling update here1",child_priority)
-                    update_vertex(succ,time)
+                    update_vertex(succ,time, agent_cons)
             else:
                 gVal[loc] = float('inf')
                 #print("calling succ")
-                for succ in problem.get_all_successors(loc,time):
+                succs,_ =  problem.get_all_successors(loc,agent_cons,time)
+                for succ in succs:
                     # child = {'loc': succ,
                     #     'g_val': node['g_val'] + 1,
                     #     'h_val': h_values[succ],
@@ -153,32 +188,46 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
                     #     'time': node['time'] + 1,
                     #     'priority': calculate_key(succ) }
                     #print("calling update here2", succ)
-                    update_vertex(succ,time)
+                    update_vertex(succ,time,agent_cons)
                 #print("calling update here3", succ)
                 
-                update_vertex(succ,time)
+                update_vertex(succ,time,agent_cons)
+        return True
 
-    def createPath(goal_loc,time):
+    def createPath(goal_loc,time,agent_cons=None):
         way = []
+        print("start loc inside create path ", start_loc, goal_loc)
         while goal_loc != start_loc:
-            temp = 9999999
+            temp = float('inf')
             minState = None
             way.append(goal_loc)
             # looping over all successor nodes
-            # #print("calling succ2", gVal)
-            next_states = problem.get_all_successors(goal_loc,time)
+            # print("calling succ2", gVal)
+            if(goal_loc == (1,0)):
+                print("goal is 1,0")
+            next_states,_ = problem.get_all_successors(goal_loc,agent_cons,time)
+            # print("done with get succ in create path")
             # if(time == 9000 and (1,2) in next_states):
             #     next_states.remove((1,2))
+
+            # print(gVal)
+    
             for successor in next_states:
+                # print("this is succ", successor)
+                if(successor == (0,0)):
+                    print("found 0,0", gVal[successor])
                 if temp > gVal[successor]:
                     temp = gVal[successor]
                     minState = successor
+                    # print("changing min state ", minState)
+
             #updating goal state value
             goal_loc = minState
             # return
-            # #print("this is new goal", goal_loc)
+            # print("this is new goal", goal_loc)
 
         way.append(goal_loc)
+        print("returning create path")
         return way[::-1]
 
 
@@ -191,16 +240,17 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
 
     def main(start_loc):
         #print("in main")
-        f = 1
+        f = True
         endPath = []
         initialize()
         time = 0
-        while f and start_loc != goal_loc:
-            #print("calling shortest path")
-            compute_shortest_path(time)
-            #print("shortest path done")
-            path = createPath(goal_loc,time)
-            #print(path)
+
+        while f:
+            print(f"Calling shortest path at time {time}", agent_constraints)
+            f = not compute_shortest_path(agent_constraints,time)
+            print("Shortest path computation done. Success:", not f)
+            path = createPath(goal_loc,time,agent_constraints)
+            print(path)
 
             for i,pos in enumerate(path[:len(path)-1]):
                 next_pos = path[i+1]
@@ -208,48 +258,59 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
                 #print("this is curr->next ", pos, next_pos)
                 if(vertex_cons and i+1 in vertex_cons):
                     cons = vertex_cons[i+1]
-                    #print(i+1," time is constrained ", cons)
+                    print(i+1," time is constrained ", cons,agent_constraints,vertex_cons)
                   
                     if(next_pos in cons):
-                        #print("updating",next_pos )
-                        time = 9000
+                        print("updating because cons",next_pos )
+            
                         gVal[next_pos] = float('inf')
-                        for succ in problem.get_all_successors(next_pos):
-                            update_vertex(succ,9000)
+                        rhs[next_pos] = float('inf')
+
+                        succs,_ =problem.get_all_successors(next_pos,agent_constraints, i+1) #want to change cost of u->v
+                        for succ in succs:
+                            update_vertex(succ,i+1,agent_constraints, True)
                             start_loc = pos
-                            # #print("new start ", pos)
-                            break
+                            print("new start ", pos)
+                            # break
                     else:
                         #print("loc not const")
                         break
                 if(edge_cons and i in edge_cons):
                     consts = edge_cons[i]
-                    #print("edge")
+                    print("edge")
                     for const in consts:
                         #print("look edge cons ", const)
                         if(const[0] == pos and const[1] == next_pos):
                             #print("violation of edge cons")
-                            update_vertex(next_pos, 9000)
+                            update_vertex(next_pos, i,agent_constraints)
                             start_loc = pos
                             break
-                            # for succ in problem.get_all_successors(next_pos,9000):
+                            # for succ,_ in problem.get_all_successors(next_pos,9000):
                             #     update_vertex(succ,9000)
                             #     start_loc = pos
                             #     # #print("new start ", pos)
                             #     break
 
 
-                elif next_pos is goal_loc:
-                        f = 0
-                        #print("goal found")
+                if next_pos is goal_loc:
+                        f = False
+                        print("goal found")
                         break
+                time +=1
+            print("Restarting path search...")
+            compute_shortest_path(agent_constraints, time)
               
             # path = createPath(goal_loc,time)
             # #print(path)
             
             # return
-        path = createPath(goal_loc,0)
-        #print(path)
+            print("dome")
+        print("calling create path")
+        print(gVal)
+        print(rhs)
+
+        path = createPath(goal_loc,0, agent_constraints)
+        print(path)
         return path
             # #print(reconstruct_path())
             # Waitfor changes in edge costs; 
@@ -306,4 +367,5 @@ def compare_nodes(n1, n2):
 
 
 
-#get all successors returns the actual pos and the obstructed pos. the obs pos will then be set to inf
+#get all successors returns the actual pos and the obstructed pos. 
+# the obs pos will then be set to inf
