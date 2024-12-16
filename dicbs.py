@@ -3,42 +3,9 @@ from pdb import set_trace as bp
 from collections import defaultdict
 from utils import get_location
 from lpa_star import lpa_star
+from copy import deepcopy
 
-def slpa_search(start, goal, env, constraints=None, start_time=0):
-    open_set = []
-    start_state = (start, start_time)
-    g_score = {start_state: 0}
-    f_score = {start_state: heuristic(start, goal)}
-    heapq.heappush(open_set, (f_score[start_state], start, start_time))
-    came_from = {}
 
-    while open_set:
-        _, current_pos, current_time = heapq.heappop(open_set)
-        current_state = (current_pos, current_time)
-
-        if current_pos == goal:
-            return reconstruct_path(came_from, current_state)
-
-        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1), (0, 0)]:  # Include waiting
-            neighbor = (current_pos[0] + dx, current_pos[1] + dy)
-            next_time = current_time + 1
-            neighbor_state = (neighbor, next_time)
-
-            if not env.is_valid(neighbor):
-                continue
-
-            if constraints and is_constrained(neighbor, next_time, constraints):
-                continue
-
-            tentative_g_score = g_score[current_state] + 1
-
-            if neighbor_state not in g_score or tentative_g_score < g_score[neighbor_state]:
-                came_from[neighbor_state] = current_state
-                g_score[neighbor_state] = tentative_g_score
-                f_score[neighbor_state] = tentative_g_score + heuristic(neighbor, goal)
-                heapq.heappush(open_set, (f_score[neighbor_state], neighbor, next_time))
-
-    return None  # No path found
 
 def reconstruct_path(came_from, current):
     path = [current]
@@ -72,8 +39,10 @@ def detect_collision(path1, path2, i,j):
 
     for time, pos in enumerate(longer_list):
         #vertex collision
+        pos = pos[0]
+        # print("checking ", time,(get_location(shorter_list,time), pos))
         if(get_location(shorter_list,time) == pos):
-            # print(get_location(path2,time), pos)
+            # print(get_location(path2,time), pos, time)
             return {'a1': agent1, 'a2': agent2, 'loc': [pos], 'timestep':time, 'vertex': True}
         #edge collision
         if(get_location(shorter_list,time+1) == pos and get_location(shorter_list,time) == get_location(longer_list,time+1)):
@@ -82,6 +51,7 @@ def detect_collision(path1, path2, i,j):
 
 def detect_collisions(paths):
     res = []
+    print("detecting collision for ", paths)
 
     for i, p1 in enumerate(paths):
         for j, p2 in enumerate(paths[i+1:]):
@@ -195,6 +165,7 @@ def is_agent_affected(path, EC_t):
     return False
 
 def add_cons(type, time, loc, agent_id, all_cons,type2 ): #type is if its pos or negatove type2 is vertex edge
+    # print("this is the cons to add ", type, loc, time, agent_id, type2)
     if type not in all_cons[agent_id]:
         all_cons[agent_id][type] = {}
     if type2 not in all_cons[agent_id][type]:
@@ -204,8 +175,11 @@ def add_cons(type, time, loc, agent_id, all_cons,type2 ): #type is if its pos or
 
     # Append the location to the list
     if loc not in all_cons[agent_id][type][type2][time]:
-        all_cons[agent_id][type][type2][time].append(loc)
-    print("here", loc, all_cons)  # You should now see this print statement
+        if(type2 == "vertex"):
+            all_cons[agent_id][type][type2][time].append(loc[0])
+        else:
+            all_cons[agent_id][type][type2][time].append(loc)
+    # print("here", loc, all_cons)  
     return all_cons
 
 
@@ -213,30 +187,40 @@ def add_cons(type, time, loc, agent_id, all_cons,type2 ): #type is if its pos or
 def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agents is start loc of agents
     t = 0
     EC = set()
-    ECT = {}
+    ECT = []
+    num_of_generated = 0       
     constraints = {agent_id: {"positive":{"vertex":{}, "edge": {}, 'env': {}},"negative":{"vertex":{}, "edge": {}, 'env': {}}} for agent_id in range(len(agents))}
     # print("beg cons", constraints)
+    collisions = []
 
-    paths = cbs_h2(agents, goals, heuristics, constraints, problem)
+    root_paths = cbs_h2(agents, goals, heuristics, constraints, problem)
   
-    if not paths:
+    if not root_paths:
         return None
-    ECT['Root'] = {
-        'cost': sum(len(path) for path in paths),
-        'constraints': {agent_id: constraints[agent_id].copy() for agent_id in constraints},
-        'paths': [path.copy() for path in paths]
-    }
+    root = {'cost': sum(len(path) for path in root_paths),
+            'constraints':  {agent_id: constraints[agent_id].copy() for agent_id in constraints},
+            'paths': [path.copy() for path in root_paths]}
+    # ECT['Root'] = {
+    #     'cost': sum(len(path) for path in paths),
+    #     'constraints': {agent_id: constraints[agent_id].copy() for agent_id in constraints},
+    #     'paths': [path.copy() for path in paths]
+    # }
+    root["collisions"] = detect_collisions(root_paths)
+    num_of_generated =  push_node(ECT,root, num_of_generated)
+    node = {}
 
     max_time = max(start_time + duration for _, start_time, duration in dynamic_obstacles)
 
-    while t <= max_time:
+    while t <= max_time or len(ECT) > 0 :
         print("Iteration: ", t)
+        affected_agents = set()
         EC_t = environment_changes(EC, t, dynamic_obstacles)
         print("This is change ", EC_t)
+        node = pop_node(ECT)
+        print("this node popped ", node)
+        newNode = deepcopy(node)
         if not EC_t and t > 0:
-            collisions = detect_collisions(paths)
-            print("this is collision ", collisions)
-            if not collisions:
+            if(node["collisions"] == []):
                 print("no conflict and env change")
                 t += 1
                 continue  # Ensure the loop continues until max_time
@@ -244,110 +228,107 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
 
         else:
             EC = EC_t.copy()
-        # print("this is ECT ", EC_t)
 
-        new_constraints = {agent_id: constraints[agent_id].copy() for agent_id in constraints}
-        affected_agents = set()
+        # new_constraints = {agent_id: constraints[agent_id].copy() for agent_id in constraints}
 
         # print("this is ECT ", EC_t)
-        # print("this is new constraints ", new_constraints)
-        print("affected agent before ", affected_agents)
+        # print("affected agent before ", affected_agents)
 
-        # for agent_id, path in enumerate(paths):
-        #     if is_agent_affected(path, EC_t):
-        #         affected_agents.add(agent_id)
-        #         print("this agent is affected ", agent_id, change)
-        #         for change in EC_t:
-        #             new_constraints[agent_id].add(change)
-
+        # Go through env changes and find cons and affected agents
         for change in EC_t:
             for agent_id in range(len(agents)):
-                if is_agent_affected(paths[agent_id], EC_t):
+                if is_agent_affected(newNode["paths"][agent_id], EC_t):
                     print("this is change ", change)
-                    print("this agent is affected ", agent_id)
-                    agent_constraints = new_constraints[agent_id]
+                    print("this agent is affected ", agent_id,)
+                    agent_constraints = newNode["constraints"][agent_id]
+                    print("this agent is affected ", agent_id,agent_constraints)
+
                     # agent_constraints['env'].append(change)
                     agent_constraints["negative"]['env'][change[1]] = [change[0]]
 
                     affected_agents.add(agent_id)
                     print("this is agent constraints for affected agent ", agent_id,  agent_constraints["negative"]['env'])
-                    new_constraints[agent_id] = agent_constraints
+                    newNode["constraints"][agent_id] = agent_constraints
 
-
-
-        # for agent_id in range(len(agents)):
-        #     agent_constraints = new_constraints[agent_id]
-        #     for change in EC_t:
-        #         print("this is change ", change)
-        #         agent_constraints['env'] = change
-        #     if is_agent_affected(paths[agent_id], EC_t):
-        #         print("this agent is affected ", agent_id)
-        #         affected_agents.add(agent_id)
-        collisions = detect_collisions(paths)
-        # print("these are the collisions ", collisions)
-        if(len(collisions) > 0):
-            collision_cons = standard_splitting(collisions[0])
-            # print("these are the constraints ", collision_cons)
-
-            for constraint in collision_cons:
-                agent = constraint["agent"]
-                affected_agents.add(agent)
-                if constraint["vertex"]:
-                    new_constraints = add_cons("negative",constraint['timestep'],constraint['loc'][0],agent,new_constraints,"vertex")
-                else:
-                    new_constraints = add_cons("negative",constraint['timestep'],constraint['loc'],agent,new_constraints,"edge")
-
-                # new_constraints[agent].add(constraint)
-                print("new constraints for agent after adding ", agent, new_constraints)
-        print("this is affected agents and their cons", affected_agents, new_constraints)
-        
-
-        # conflicts = detect_conflicts(paths)
-        # for conflict_type, agent1, agent2, conflict_data, time in conflicts:
-        #     if conflict_type == 'vertex':
-        #         # Vertex conflict: two agents occupying the same position
-        #         constraints[agent1].add((conflict_data, time))
-        #         constraints[agent2].add((conflict_data, time+1))
-        #     elif conflict_type == 'edge':
-        #         # Edge conflict: two agents swapping positions
-        #         current_pos, next_pos = conflict_data
-        #         constraints[agent1].add(((current_pos, next_pos), time))
-        #         constraints[agent2].add(((next_pos, current_pos), time))
-        #     elif conflict_type == 'waiting':
-        #         # Waiting conflict: agent1 is waiting, agent2 wants to pass through
-        #         constraints[agent1].add((conflict_data, time))  # Prevent agent1 from waiting
-        #         constraints[agent2].add((conflict_data, time))  # Prevent agent2 from entering at the same time
-        #     # affected_agents.update([agent1, agent2])
-
+    # Find new paths for agents affected by env changes
         for agent_id in affected_agents:
             backtrack_time = max(0, t - alpha)
-            previous_path = paths[agent_id]
-            print("prev path ", previous_path)
+            previous_path = newNode["paths"][agent_id]
+            # print("prev path ", previous_path)
             print("backtrack time ", backtrack_time)
 
             start_position = previous_path[backtrack_time]
             start_time = len(previous_path) - backtrack_time
-            print("here")
-            print("trying to find new path for agent with cons ",agent_id, new_constraints[agent_id], start_position[0])
+            print("trying to find new path for agent with cons ",agent_id, newNode["constraints"][agent_id], start_position[0])
             new_path = None
-            new_path = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,new_constraints[agent_id], True )
+            new_path = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,newNode["constraints"][agent_id], True )
             if new_path:
                 print("new path found for agent ", agent_id , new_path)
-                paths[agent_id] = previous_path[:backtrack_time] + new_path
-                ECT[agent_id] = {'constraints': constraints[agent_id].copy(), 'path': paths[agent_id].copy()}
+                newNode["paths"][agent_id] = previous_path[:backtrack_time] + new_path
+                newNode["constraints"][agent_id] = {'constraints': constraints[agent_id].copy()}
             else:
                 return None
-         
+        newNode["cost"] = sum(len(path) for path in newNode["paths"]),
 
-        constraints = new_constraints
-        ECT['Root']['constraints'] = {agent_id: constraints[agent_id].copy() for agent_id in constraints}
-        ECT['Root']['paths'] = [path.copy() for path in paths]
+        # Find collisions in the path changes according to env cons - if no env changes then newNode is just the node we popped
+        if(newNode == node):
+            collisions = node["collisions"]
+        else:
+            collisions = detect_collisions(newNode["paths"])
+        print("these are the collisions ", collisions)
+
+        if(len(collisions) > 0):
+            collision_cons = standard_splitting(collisions[0])
+            # print("these are the constraints ", collision_cons)
+            for constraint in collision_cons:
+                agent_id = constraint["agent"]
+                childNode = {'cost': 0,
+                'constraints': deepcopy(newNode["constraints"]), 
+                'paths': deepcopy( newNode["paths"]),
+                'collisions': []}
+                # affected_agents.add(agent)
+                if constraint["vertex"]:
+                    childNode["constraints"] = add_cons("negative",constraint['timestep'],constraint['loc'],agent_id,childNode["constraints"],"vertex")
+                   
+                    # newNode["constraints"].append(constraint)
+                else: 
+                   childNode["constraints"]= add_cons("negative",constraint['timestep'],constraint['loc'],agent_id,childNode["constraints"],"edge")
+
+                # new_constraints[agent].add(constraint)
+                previous_path = childNode["paths"][agent_id]
+            # print("prev path ", previous_path)
+                backtrack_time = max(0, t - alpha)
+                # print("backtrack time ", backtrack_time)
+                start_position = previous_path[backtrack_time]
+                start_time = len(previous_path) - backtrack_time
+                print("trying to find new path for agent with cons ",agent_id, childNode["constraints"][agent_id], start_position[0])
+                new_path = None
+                new_path = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,childNode["constraints"][agent_id], True )
+                if new_path:
+                    childNode["paths"][agent_id] = previous_path[:backtrack_time] + new_path
+                    print("new path found for agent ", agent_id , childNode["paths"][agent_id])
+                    print("all path in this node " , childNode["paths"])
+                    childNode["cost"] = sum(len(path) for path in childNode["paths"])
+                    childNode["collisions"] = detect_collisions(childNode["paths"])
+                    print("this child generated with collisions ", childNode)
+                    num_of_generated = push_node(ECT,childNode, num_of_generated)
+                else:
+                    return None
+            print("this is affected agents and their cons", affected_agents,  childNode["constraints"][agent_id])
+
+       
+        # collisions = detect_collisions(paths)
+        # print("collisions in the new path ", collisions)
+        # constraints = new_constraints
+        # ECT['Root']['constraints'] = {agent_id: constraints[agent_id].copy() for agent_id in constraints}
+        # ECT['Root']['paths'] = [path.copy() for path in paths]
         t += 1
+    print("end the thing ",t ,len(ECT), node)
 
-    if not validate_paths_against_obstacles(paths, dynamic_obstacles):
+    if not validate_paths_against_obstacles(node["paths"], dynamic_obstacles):
         return None
 
-    return paths
+    return node["paths"]
 
 def validate_paths_against_obstacles(paths, dynamic_obstacles):
     """Validate that the computed paths respect all dynamic obstacle constraints."""
@@ -361,3 +342,12 @@ def validate_paths_against_obstacles(paths, dynamic_obstacles):
             if (position, time) in obstacle_constraints:
                 return False
     return True
+
+def push_node(open_list, node, num_of_generated):
+        heapq.heappush(open_list, (node['cost'], len(node['collisions']),num_of_generated, node))
+        return num_of_generated +1
+        # print("Generate node {}".format(self.num_of_generated))
+def pop_node(open_list):
+        _, _, id, node = heapq.heappop(open_list)
+        # print("Expand node {}".format(id))
+        return node

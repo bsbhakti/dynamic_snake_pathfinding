@@ -47,8 +47,10 @@ def compute_heuristics(my_map, goal):
 
 def get_location(path, time):
     if time < 0:
-        return path[0]
+        return path[0][0]
     elif time < len(path):
-        return path[time]
+        # print("get loc is returning loc ", path[time][0])
+        return path[time][0]
     else:
-        return path[-1]  # wait at the goal location
+        # print("get loc is returning loc ", path[time][0])
+        return path[-1][0]  # wait at the goal location
