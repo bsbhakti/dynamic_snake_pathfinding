@@ -5,7 +5,7 @@ import random
 from single_agent_planner import compute_heuristics
 from single_agent_solver import SingleAgentSolver
 from run_exp import import_mapf_instance
-
+from pdb import set_trace as bp
 my_map, starts, goals = import_mapf_instance("exp1.txt")
 # solver = SingleAgentSolver(my_map, starts, goals) 
 print("Start: ",starts[0])
@@ -14,9 +14,11 @@ print("Goals: ",goals[0])
 
 snake_speed = 10
 
+block_size = 15
+
 # Window size
-window_x = 600
-window_y = 400
+window_x = len(my_map[0]) * block_size  # Number of columns
+window_y = len(my_map) * block_size     # Number of rows
 
 
 # defining colors
@@ -25,6 +27,14 @@ white = pygame.Color(255, 255, 255)
 red = pygame.Color(255, 0, 0)
 green = pygame.Color(0, 255, 0)
 blue = pygame.Color(0, 0, 255)
+
+# Load bomb image and scale it to fit grid size
+bomb_image = pygame.image.load("Images/bomb.png")
+bomb_image = pygame.transform.scale(bomb_image, (block_size, block_size))  # 10x10 to match grid cells
+
+# Load fruit image and scale it to fit grid size
+fruit_image = pygame.image.load("Images/fruit.png")
+fruit_image = pygame.transform.scale(fruit_image, (block_size, block_size))  # 10x10 grid size
 
 # fruit_image = pygame.image.load('a1.jpeg')
 # fruit_image = pygame.transform.scale(fruit_image, (10, 10))
@@ -38,16 +48,23 @@ game_window = pygame.display.set_mode((window_x, window_y))
 # FPS (frames per second) controller
 fps = pygame.time.Clock()
 # defining snake default position 
-snake_position = [starts[0][0]*10, starts[0][1]*10]
+snake_position = [starts[0][0]*block_size, starts[0][1]*block_size]
 
 # defining first 4 blocks of snake
 # body
-snake_body = [  [100, 50],
-                [90, 50],
-                [80, 50],
-                [70, 50]
-            ]
-fruit_position = [goals[0][0]*10, goals[0][1]*10]
+# snake_body = [  [100, 50],
+#                 [90, 50],
+#                 [80, 50],
+#                 [70, 50]
+#             ]
+
+snake_body = [
+    [5 * block_size, 2 * block_size],
+    [4 * block_size, 2 * block_size],
+    [3 * block_size, 2 * block_size],
+    [2 * block_size, 2 * block_size]
+]
+fruit_position = [goals[0][0]*block_size, goals[0][1]*block_size]
 prev_fruit_position = starts[0]
 
 # fruit_position = [random.randrange(1, (window_x//10)) * 10,
@@ -110,7 +127,7 @@ def game_over():
     # Main Function
 
 def make_random_move(snake_x,snake_y):
-    moves = [[snake_x+10,snake_y], [snake_x-10,snake_y], [snake_x,snake_y-10],[snake_x,snake_y+10]]
+    moves = [[snake_x+block_size,snake_y], [snake_x-block_size,snake_y], [snake_x,snake_y-block_size],[snake_x,snake_y+block_size]]
     random_move =  random.choice(moves)
     # print(f"rnadom move:{random_move}, snake_body: {snake_body}]")
     while(random_move in snake_body):
@@ -174,13 +191,13 @@ while True and count <1:
     # prev_fruit_position = [prev_fruit_position[0] // 10, prev_fruit_position[1] // 10]
 
 
-    solver = SingleAgentSolver(my_map,[(prev_fruit_position[0], prev_fruit_position[1])],[(fruit_position[0]//10, fruit_position[1]//10)], True)
+    solver = SingleAgentSolver(my_map,[(prev_fruit_position[0], prev_fruit_position[1])],[(fruit_position[0]//block_size, fruit_position[1]//block_size)], True)
     snake_path = find_path()
     for snake_position in snake_path[0]:
     # Snake body growing mechanism 
     # if fruits and snakes collide then scores will be 
     # incremented by 10
-        snake_position = [snake_position[0]*10, snake_position[1]* 10]
+        snake_position = [snake_position[0]*block_size, snake_position[1]* block_size]
         print("Snake pos", snake_position)
         snake_body.insert(0, list(snake_position))
         print(f"Snake: {snake_position}, Fruit: {fruit_position}, Snake body: {snake_body}")
@@ -199,21 +216,31 @@ while True and count <1:
         fruit_spawn = True
         game_window.fill(black)
         
+        # Draw obstacles as bombs
+        for i in range(len(my_map)):
+            for j in range(len(my_map[i])):
+                if my_map[i][j] == True:  # '@' represents an obstacle
+                    game_window.blit(bomb_image, (j * block_size, i * block_size))  # Place bomb at grid position
+        
         for pos in snake_body:
             # print("this is out", pos)
             
             pygame.draw.rect(game_window, green, pygame.Rect(
-            pos[0], pos[1], 10, 10),border_radius=5)
+            pos[0], pos[1], block_size, block_size),border_radius=5)
             
-        pygame.draw.rect(game_window, white, pygame.Rect(
-        fruit_position[0], fruit_position[1], 10, 10),border_radius=2)
+        # pygame.draw.rect(game_window, white, pygame.Rect(
+        # fruit_position[0], fruit_position[1], 10, 10),border_radius=2)
+        
+        # Draw the goal as a pineapple
+        game_window.blit(fruit_image, (fruit_position[0], fruit_position[1]))
+
 
         # game_window.blit(fruit_image, (fruit_position[0], fruit_position[1])) 
 
         # Game Over conditions
-        if snake_position[0] < 0 or snake_position[0] > window_x-10:
+        if snake_position[0] < 0 or snake_position[0] >= window_x:
             game_over()
-        if snake_position[1] < 0 or snake_position[1] > window_y-10:
+        if snake_position[1] < 0 or snake_position[1] >= window_y:
             game_over()
         
         # Touching the snake body
@@ -222,7 +249,7 @@ while True and count <1:
                 game_over()
         
         # displaying score continuously
-        show_score(1, white, 'times new roman', 20)
+        # show_score(1, white, 'times new roman', 20)
         
         # Refresh game screen
         pygame.display.update()
