@@ -2,6 +2,8 @@ import json
 import time
 from instances import scenarios
 from dicbs import dicbs
+from pdb import set_trace as bp
+
 
 class GridEnvironment:
     def __init__(self, grid):
@@ -29,6 +31,7 @@ for i, scenario in enumerate(scenarios):
 
     # Measure time taken by dicbs
     start_time = time.time()
+    bp()
     paths = dicbs(agents, goals, env, dynamic_obstacles)
     end_time = time.time()
     elapsed_time = end_time - start_time

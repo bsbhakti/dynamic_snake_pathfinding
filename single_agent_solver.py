@@ -4,7 +4,7 @@ from single_agent_planner import compute_heuristics, a_star, get_sum_of_cost
 class SingleAgentSolver(object):
     """A planner that plans for each robot sequentially."""
 
-    def __init__(self, my_map, starts, goals):
+    def __init__(self, my_map, starts, goals, simple=False):
         """my_map   - list of lists specifying obstacle positions
         starts      - [(x1, y1), (x2, y2), ...] list of start locations
         goals       - [(x1, y1), (x2, y2), ...] list of goal locations
@@ -16,17 +16,21 @@ class SingleAgentSolver(object):
         self.num_of_agents = len(goals)
 
         self.CPU_time = 0
+        print("this is goal3", goals)
 
         # compute heuristics for the low-level search
         self.heuristics = []
+      
         for goal in self.goals:
-            self.heuristics.append(compute_heuristics(my_map, goal))
+                self.heuristics.append(compute_heuristics(my_map, goal))
+        print("this is h ", self.heuristics)
 
     def find_solution(self):
         """ Finds paths for all agents from their start locations to their goal locations."""
 
         start_time = timer.time()
         result = []
+        print("inside find ", self.starts, self.goals)
         ###### UNCOMMENT IT for Task 1.4 ###########
         # constraints_0 = [{'agent': 0, 'loc': [(1,5)], 'timestep': 10, 'end':False, 'positive':False}]
         ###### UNCOMMENT IT for Task 1.4 ###########
