@@ -8,7 +8,7 @@ from instances import scenarios
 from pdb import set_trace as bp
 
 # Import map and scenarios
-my_map, _, _ = import_mapf_instance("exp1.txt")
+# my_map, _, _ = import_mapf_instance("exp1.txt")
 
 # Get scenario for two agents
 i = 48
@@ -18,6 +18,7 @@ starts_2 = scenarios[i]['agents'][1]
 goals_2 = scenarios[i]['goals'][1]
 my_map = scenarios[i]['grid']
 dynamic_obstacles = [(scenarios[i]['dynamic_obstacles'][0]['position'], scenarios[i]['dynamic_obstacles'][0]['start_time'], scenarios[i]['dynamic_obstacles'][0]['duration'])]
+
 # Print agent start and goal positions
 print("Start Agent 1: ", starts_1)
 print("Goal Agent 1: ", goals_1)
@@ -37,7 +38,7 @@ class GridEnvironment:
 
 # Snake parameters
 snake_speed = 2
-block_size = 100
+block_size = 80
 
 # Window size
 window_x = len(my_map[0]) * block_size  # Number of columns
@@ -47,15 +48,20 @@ window_y = len(my_map) * block_size     # Number of rows
 black = pygame.Color(0, 0, 0)
 white = pygame.Color(255, 255, 255)
 red = pygame.Color(255, 0, 0)
-green = pygame.Color(0, 255, 0)
-blue = pygame.Color(0, 0, 255)
+green_head = pygame.Color(0, 255, 0)
+green_body = pygame.Color(0, 180, 0)
+blue_head = pygame.Color(0, 0, 255)
+blue_body = pygame.Color(0, 0, 180)
 
 # Load images
 bomb_image = pygame.image.load("Images/bomb.png")
 bomb_image = pygame.transform.scale(bomb_image, (block_size, block_size))
 
-fruit_image = pygame.image.load("Images/fruit.png")
-fruit_image = pygame.transform.scale(fruit_image, (block_size, block_size))
+banana_image = pygame.image.load("Images/banana.png")
+banana_image = pygame.transform.scale(banana_image, (block_size, block_size))
+
+pineapple_image = pygame.image.load("Images/pineapple.png")
+pineapple_image = pygame.transform.scale(pineapple_image, (block_size, block_size))
 
 # Initialize pygame
 pygame.init()
@@ -90,10 +96,7 @@ goals_1 = [(fruit_position_1[1] // block_size, fruit_position_1[0] // block_size
 agents_2 = [(prev_fruit_position_2[1] // block_size, prev_fruit_position_2[0] // block_size)]
 goals_2 = [(fruit_position_2[1] // block_size, fruit_position_2[0] // block_size)]
 
-paths_1, paths_2 = dicbs([agents_1[0], agents_2[0]], [goals_1[0],goals_2[0]], env, dynamic_obstacles) 
-
-# paths_1 = dicbs(agents_1, goals_1, env, dynamic_obstacles)
-# paths_2 = dicbs(agents_2, goals_2, env, dynamic_obstacles)
+paths_1, paths_2 = dicbs([agents_1[0], agents_2[0]], [goals_1[0], goals_2[0]], env, dynamic_obstacles)
 
 if not paths_1 or not paths_1[0]:
     print("No path found for Agent 1!")
@@ -133,72 +136,46 @@ while True:
             snake_body_2.pop()
         snake_index_2 += 1
 
-    # Check for collisions with the boundary
-    for snake_position in [snake_body_1[0], snake_body_2[0]]:
-        if (snake_position[0] < 0 or snake_position[0] >= window_x or
-            snake_position[1] < 0 or snake_position[1] >= window_y):
-            game_over()
-            
     # Check for collisions with dynamic obstacles
     for obs in dynamic_obstacles:
         obs_position, obs_start_time, obs_duration = obs
         if time_step >= obs_start_time and time_step < obs_start_time + obs_duration:
             obstacle_pixel_position = (obs_position[1] * block_size, obs_position[0] * block_size)
 
-            # Snake 1 hits dynamic obstacle
-            if snake_body_1[0] == list(obstacle_pixel_position):
-                print(f"Snake 1 hit a dynamic obstacle at timestep {time_step}!")
+            # Snake collisions
+            if snake_body_1[0] == list(obstacle_pixel_position) or snake_body_2[0] == list(obstacle_pixel_position):
+                print(f"Snake hit a dynamic obstacle at timestep {time_step}!")
                 game_over()
-
-            # Snake 2 hits dynamic obstacle
-            if snake_body_2[0] == list(obstacle_pixel_position):
-                print(f"Snake 2 hit a dynamic obstacle at timestep {time_step}!")
-                game_over()
-
-    # Check for collisions between the two snakes
-    for block in snake_body_1[1:]:
-        if snake_body_2[0] == block:
-            game_over()
-
-    for block in snake_body_2[1:]:
-        if snake_body_1[0] == block:
-            game_over()
 
     # Clear the game window
     game_window.fill(black)
 
-    # Draw Obstacles
-    for i in range(len(my_map)):
-        for j in range(len(my_map[i])):
-            if my_map[i][j] == '@':
-                game_window.blit(bomb_image, (j * block_size, i * block_size))
-                
     # Draw Dynamic Obstacles
     for obs in dynamic_obstacles:
         obs_position, obs_start_time, obs_duration = obs
         if time_step >= obs_start_time and time_step < obs_start_time + obs_duration:
-            j, i = obs_position  # Dynamic obstacle position
+            j, i = obs_position
             game_window.blit(bomb_image, (j * block_size, i * block_size))
 
-    # Draw Snake 1 (Green)
-    for pos in snake_body_1:
-        pygame.draw.rect(game_window, green, pygame.Rect(
-            pos[0], pos[1], block_size, block_size), border_radius=5)
+    # Draw Snake 1 (Green with a distinct head)
+    for index, pos in enumerate(snake_body_1):
+        if index == 0:  # Head of the snake
+            pygame.draw.circle(game_window, green_head, (pos[0] + block_size // 2, pos[1] + block_size // 2), block_size // 2)
+        else:
+            pygame.draw.rect(game_window, green_body, pygame.Rect(pos[0], pos[1], block_size, block_size))
 
-    # Draw Snake 2 (Blue)
-    for pos in snake_body_2:
-        pygame.draw.rect(game_window, blue, pygame.Rect(
-            pos[0], pos[1], block_size, block_size), border_radius=5)
+    # Draw Snake 2 (Blue with a distinct head)
+    for index, pos in enumerate(snake_body_2):
+        if index == 0:  # Head of the snake
+            pygame.draw.circle(game_window, blue_head, (pos[0] + block_size // 2, pos[1] + block_size // 2), block_size // 2)
+        else:
+            pygame.draw.rect(game_window, blue_body, pygame.Rect(pos[0], pos[1], block_size, block_size))
 
     # Draw Goal Positions
-    game_window.blit(fruit_image, (fruit_position_1[0], fruit_position_1[1]))
-    game_window.blit(fruit_image, (fruit_position_2[0], fruit_position_2[1]))
+    game_window.blit(banana_image, (fruit_position_1[0], fruit_position_1[1]))
+    game_window.blit(pineapple_image, (fruit_position_2[0], fruit_position_2[1]))
 
     # Update game display
     pygame.display.update()
-    
-    # Increment time step
-    time_step += 1
-
-    # Control game speed
-    fps.tick(snake_speed)
+    time_step += 1  # Increment time step
+    fps.tick(snake_speed)  # Control game speed
