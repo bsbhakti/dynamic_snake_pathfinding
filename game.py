@@ -1,13 +1,12 @@
 import pygame
 import time
-import random
 from dicbs import dicbs  # Import dicbs function
 from run_exp import import_mapf_instance
 from instances import scenarios
 from pdb import set_trace as bp
 
 # Import map and scenarios
-# my_map, _, _ = import_mapf_instance("exp1.txt")
+my_map, _, _ = import_mapf_instance("exp1.txt")
 
 # Get scenario for two agents
 i = 48
@@ -46,11 +45,8 @@ window_y = len(my_map) * block_size     # Number of rows
 # Define colors
 black = pygame.Color(0, 0, 0)
 white = pygame.Color(255, 255, 255)
-red = pygame.Color(255, 0, 0)
-green_head = pygame.Color(0, 255, 0)
-green_body = pygame.Color(0, 180, 0)
-blue_head = pygame.Color(0, 0, 255)
-blue_body = pygame.Color(0, 0, 180)
+green = pygame.Color(0, 255, 0)
+blue = pygame.Color(0, 0, 255)
 
 # Load images
 bomb_image = pygame.image.load("Images/bomb.png")
@@ -68,9 +64,9 @@ pygame.display.set_caption('Two Snakes Game')
 game_window = pygame.display.set_mode((window_x, window_y))
 fps = pygame.time.Clock()
 
-# Snake positions and paths
-snake_body_1 = []  # Snake body for agent 1
-snake_body_2 = []  # Snake body for agent 2
+# Snake paths
+snake_body_1 = []  # Snake 1
+snake_body_2 = []  # Snake 2
 
 # Fruit positions
 fruit_position_1 = [goals_1[0] * block_size, goals_1[1] * block_size]
@@ -123,7 +119,7 @@ while True:
     if snake_index_1 < len(snake_path_1):
         snake_position_1 = snake_path_1[snake_index_1]
         snake_body_1.insert(0, list(snake_position_1))
-        if len(snake_body_1) > 1:
+        if len(snake_body_1) > 3:  # Limit to length 3
             snake_body_1.pop()
         snake_index_1 += 1
 
@@ -131,23 +127,34 @@ while True:
     if snake_index_2 < len(snake_path_2):
         snake_position_2 = snake_path_2[snake_index_2]
         snake_body_2.insert(0, list(snake_position_2))
-        if len(snake_body_2) > 1:
+        if len(snake_body_2) > 3:  # Limit to length 3
             snake_body_2.pop()
         snake_index_2 += 1
+
+    # Check for collisions with static obstacles
+    for snake_pos in [snake_body_1[0], snake_body_2[0]]:
+        j, i = snake_pos[0] // block_size, snake_pos[1] // block_size
+        if my_map[i][j] == 1:  # Static obstacle position
+            print("Snake hit a static obstacle!")
+            game_over()
 
     # Check for collisions with dynamic obstacles
     for obs in dynamic_obstacles:
         obs_position, obs_start_time, obs_duration = obs
         if time_step >= obs_start_time and time_step < obs_start_time + obs_duration:
             obstacle_pixel_position = (obs_position[1] * block_size, obs_position[0] * block_size)
-
-            # Snake collisions
             if snake_body_1[0] == list(obstacle_pixel_position) or snake_body_2[0] == list(obstacle_pixel_position):
                 print(f"Snake hit a dynamic obstacle at timestep {time_step}!")
                 game_over()
 
     # Clear the game window
     game_window.fill(black)
+
+    # Draw Static Obstacles
+    for i in range(len(my_map)):
+        for j in range(len(my_map[i])):
+            if my_map[i][j] == 1:
+                game_window.blit(bomb_image, (j * block_size, i * block_size))
 
     # Draw Dynamic Obstacles
     for obs in dynamic_obstacles:
@@ -156,19 +163,11 @@ while True:
             j, i = obs_position
             game_window.blit(bomb_image, (j * block_size, i * block_size))
 
-    # Draw Snake 1 (Green with a distinct head)
-    for index, pos in enumerate(snake_body_1):
-        if index == 0:  # Head of the snake
-            pygame.draw.circle(game_window, green_head, (pos[0] + block_size // 2, pos[1] + block_size // 2), block_size // 2)
-        else:
-            pygame.draw.rect(game_window, green_body, pygame.Rect(pos[0], pos[1], block_size, block_size))
-
-    # Draw Snake 2 (Blue with a distinct head)
-    for index, pos in enumerate(snake_body_2):
-        if index == 0:  # Head of the snake
-            pygame.draw.circle(game_window, blue_head, (pos[0] + block_size // 2, pos[1] + block_size // 2), block_size // 2)
-        else:
-            pygame.draw.rect(game_window, blue_body, pygame.Rect(pos[0], pos[1], block_size, block_size))
+    # Draw Snakes
+    for pos in snake_body_1:
+        pygame.draw.rect(game_window, green, pygame.Rect(pos[0], pos[1], block_size, block_size))
+    for pos in snake_body_2:
+        pygame.draw.rect(game_window, blue, pygame.Rect(pos[0], pos[1], block_size, block_size))
 
     # Draw Goal Positions
     game_window.blit(banana_image, (fruit_position_1[0], fruit_position_1[1]))
