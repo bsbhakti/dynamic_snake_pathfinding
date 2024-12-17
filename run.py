@@ -2,8 +2,7 @@ import json
 import time
 from instances import scenarios
 from dicbs import dicbs
-from pdb import set_trace as bp
-
+from snakeProblem import SnakeProblem
 
 class GridEnvironment:
     def __init__(self, grid):
@@ -31,8 +30,11 @@ for i, scenario in enumerate(scenarios):
 
     # Measure time taken by dicbs
     start_time = time.time()
-    bp()
-    paths = dicbs(agents, goals, env, dynamic_obstacles)
+
+    problem = SnakeProblem(env,agents, goals, dynamic_obstacles)
+    paths = problem.find_solution()
+    # paths = dicbs(agents, goals, env, dynamic_obstacles)
+
     end_time = time.time()
     elapsed_time = end_time - start_time
 
@@ -53,6 +55,7 @@ for i, scenario in enumerate(scenarios):
         "paths": agent_paths,
         "time_taken": elapsed_time
     })
+    # break
 
 # Write results to JSON (flat format)
 output_file = "results.json"

@@ -1,198 +1,341 @@
 import heapq
+from collections import defaultdict
 
-def lpa_star(problem, start_loc, goal_loc,agent,h_values):
-    open_list = []
-    rhs = {}
-    gVal = {}
-    start_node = {}
-    node_map = {}
+from single_agent_planner import is_constrained
+path_costs = {
+    ((0, 0), (0, 1)): 1,  # Right from (0,0) to (0,1)
+    ((0, 1), (0, 0)): 1,  # Left from (0,1) to (0,0)
+    ((0, 0), (1, 0)): 1,  # Down from (0,0) to (1,0)
+    ((1, 0), (0, 0)): 1,  # Up from (1,0) to (0,0)
+    ((0, 1), (1, 1)): 1,  # Down from (0,1) to (1,1)
+    ((1, 1), (0, 1)): 1,  # Up from (1,1) to (0,1)
+    ((1, 0), (1, 1)): 1,  # Right from (1,0) to (1,1)
+    ((1, 1), (1, 0)): 1   # Left from (1,1) to (1,0)
+}
 
-    def calculate_key(loc):
-        return min(gVal[loc],rhs[loc]) + h_values[loc], min(gVal[loc],rhs[loc])
+
+def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraints=None, replan = False, agent_state=False, path = None):
+    if(replan):
+        #print("REPLANNING")
+        gVal = agent_state[0]
+        rhs = agent_state[1]
+        prev_cons = agent_state[2]
+        print("replan",prev_cons)
+        open_list = []
+        path = path
+        # #print(gVal,"\n", rhs, "\n", open_list, "\n")
+    else:
+        prev_cons = None
+        path = None
+        open_list = []
+        rhs = defaultdict(lambda: float('inf'))  # Lazy initialization to inf
+        gVal = defaultdict(lambda: float('inf'))  # Lazy initialization to inf
+    
+    ####print("this is goal", goal_loc)
+    # rhs[goal_loc] = 
+    # gVal[goal_loc] = 0
+
+    vertex_cons = {}
+    edge_cons = {}
+    ##print("received this cons for agent isnide lpa ", agent_id, agent_constraints, start_loc)
+    h_values = heuristics[agent_id]
+    if(agent_constraints):
+        agent_constraints = agent_constraints["negative"] #JUST EXTRACTING NEGATIVE FOR NOW
+        ##print("in lpa star, agent cons",agent_id,agent_constraints)
+        for i in agent_constraints["env"]:
+            if(i in agent_constraints["vertex"]):
+                vertex_cons[i] = agent_constraints["env"][i],agent_constraints["vertex"][i]
+            else:
+                vertex_cons[i] = agent_constraints["env"][i]
+
+        for i in agent_constraints["vertex"]:
+            if(i not in vertex_cons):
+                vertex_cons[i] = agent_constraints["vertex"][i]
+        edge_cons = agent_constraints["edge"]
+        ##print("this is vertex cons and env obstacles inside lpa ", vertex_cons)
+        ##print("this is edge cons inside lpa ", edge_cons)
+
+
+    def calculate_key(loc, time):
+        return min(gVal[(loc, time)] + time, rhs[(loc, time)] + h_values[loc] + time), min(gVal[(loc, time)], rhs[(loc, time)])
 
 
     def initialize():
-        for state in problem.get_all_states():
-            rhs[state] = gVal[state] = float('inf')
-        rhs[start_loc] = 0
-        start_node["loc"] = start_loc
-        start_node['g_val']= gVal[start_loc] 
-        start_node['h_val']= h_values[start_loc]
-        start_node['parent']=  "root"
-        start_node['time'] = 0
-        start_node['priority'] = calculate_key(start_loc)
-
-        rhs[start_loc] = 0
-        print("calling push1")
-        push_node(open_list,start_node["loc"], calculate_key(start_loc),0)
-
-    def update_vertex(node_loc, node_time):
-        loc = node_loc
-        if node_loc != start_loc:
-            m = float('inf')
-            next_states = problem.get_all_successors(node_loc)
-            
-            for succ  in next_states:
-                new_gval = gVal[succ]+1
-                if(rhs[succ] < new_gval ):
-                    rhs[node_loc] = min(rhs[node_loc], new_gval)
-                    print("updated rhs of loc ", loc,  rhs[node_loc])
+        if not replan:
+            #print("NOT REPLANNING")
+            rhs[(start_loc, 0)] = 0
+            push_node(open_list, start_loc, calculate_key(start_loc, 0),0)
+         
+        else:
+            rhs[(start_loc, 0)] = 0
+            gVal[(start_loc, 0)] = float('inf')
+            #print("init replanning", goal_loc, gVal[(start_loc,0)], rhs[(start_loc, 0)], gVal, rhs)
+            push_node(open_list, start_loc, calculate_key(start_loc, 0),0)
+            # #print(gVal, "\n", rhs, "\n", open_list, "\n")
+            return
 
 
-                    # print("this is node map ", node_map)
-                    # node["parent"] = node_map[(succ,node["time"]-1)]
-            # print("updating rhs of loc", node["loc"], m)
-            # rhs[node["loc"]] = m
-        k = calculate_key(node_loc)
+    def update_vertex(node_loc, node_time, agent_cons=None, is_constrained=False):
+        #print("update vertex called ", node_loc, node_time,   rhs[(node_loc, node_time)])
+        if node_loc in vertex_cons.get(node_time, []):
+            #print("THIS IS constrained loc ", node_loc, node_time)
+            rhs[(node_loc,node_time)] = float('inf')
+            return
+        if (node_loc, node_time) != (start_loc, 0):
+            # Get predecessors (or successors in case of bidirectional checks)
+            rhs[(node_loc, node_time)] = float('inf')
+            next_states, _ = problem.get_all_successors(node_loc, agent_cons, node_time)
+            for succ in next_states:
+                # Check vertex constraint
+                if node_time - 1 in vertex_cons.get(succ, []):
+                    #print("vertex cons on  ",[succ, node_loc], node_time )
+                    continue  # Skip constrained states
+                if edge_cons.get(node_time) and [succ, node_loc] in edge_cons.get(node_time, []):
+                    #print("edge cons on  ",[succ, node_loc], node_time )
+                    continue
+                c = 1  # Edge cost
+                #print("succ is ", succ, gVal[(succ, node_time - 1)])
+                rhs[(node_loc, node_time)] = min(rhs[(node_loc, node_time)], gVal[(succ, node_time - 1)] + c)
+                #print("updated rhs val of ", (node_loc,node_time),  rhs[(node_loc, node_time)])
+            # Update the open list
+            remove_node(open_list, (node_loc, node_time))
+            if gVal[(node_loc, node_time)] != rhs[(node_loc, node_time)]:
+                #print("pushing node with key ", node_loc, node_time,calculate_key(node_loc, node_time))
+                push_node(open_list, node_loc, calculate_key(node_loc, node_time), node_time)
 
-        # if node_map.get((loc, node["time"])):  # If node exisats in the map
-        remove_node(open_list, node_loc, node_time)
-        print("removing node, new priority",k,node_loc)
-        if gVal[loc] != rhs[loc]:
-            # node["priority"] = k
-            print("pushing node", node_loc)
-            # node["time"] = node["time"] + 1
-            push_node(open_list, node_loc, k, node_time)
+    def compute_shortest_path(agent_cons=None, time=0):
+        # #print("open list and goal ",open_list, goal_loc)
+        while (
+            top_key(open_list)[0] < calculate_key(goal_loc, time)[0] or
+            rhs[(goal_loc, time)] != gVal[(goal_loc, time)]
+        ):
+            loc, time = pop_node(open_list)
 
-        # if(k[0], k[1],node["loc"],node in open_list):
-        #     print("removing")
-        #     remove_node(open_list,node, node_map)
-        # if(gVal[node["loc"]] != rhs[node["loc"]]):
-        #     print("pushing node ", node)
-        #     push_node(open_list, node, calculate_key(node["loc"]),node_map)
-
-    def compute_shortest_path():
-        print("this is goal node's priority",calculate_key(goal_loc))
-        while (top_key(open_list)[0] < calculate_key(goal_loc)[0] and top_key(open_list)[1] < calculate_key(goal_loc)[1])  or rhs[goal_loc] != gVal[goal_loc]:
-            (loc,time) = pop_node(open_list)
-            print("node pooped", loc, time)
-
-            if(gVal[loc] > rhs[loc]):
-                gVal[loc] = rhs[loc]
-                # node["g_val"] = rhs[node["loc"]]
-                print("updated gVal of node with loc ",loc,  gVal[loc])
-                for succ in problem.get_all_successors(loc):
-                    # child = {'loc': succ,
-                    #     'g_val': node['g_val'] + 1,
-                    #     'h_val': h_values[succ],
-                    #     'parent': node,
-                    #     'time': node['time'] + 1,
-                    #     'priority': calculate_key(succ) }
-                    child_priority  = calculate_key(succ)
-                    print("calling update here1",child_priority)
-                    update_vertex(succ,0)
+            if gVal[(loc, time)] > rhs[(loc, time)]:
+                gVal[(loc, time)] = rhs[(loc, time)]
+                next_states, _ = problem.get_all_successors(loc, agent_cons, time)
+                for succ in next_states:
+                    update_vertex(succ, time + 1, agent_cons)
             else:
-                gVal[loc] = float('inf')
-                for succ in problem.get_all_successors(loc):
-                    # child = {'loc': succ,
-                    #     'g_val': node['g_val'] + 1,
-                    #     'h_val': h_values[succ],
-                    #     'parent': node,
-                    #     'time': node['time'] + 1,
-                    #     'priority': calculate_key(succ) }
-                    print("calling update here2", succ)
-                    update_vertex(succ,0)
-                print("calling update here3", succ)
-                
-                update_vertex(succ)
+                gVal[(loc, time)] = float('inf')
+                next_states, _ = problem.get_all_successors(loc, agent_cons, time)
+                for succ in next_states:
+                    update_vertex(succ, time + 1, agent_cons)
+                update_vertex(loc, time + 1, agent_cons)
+        goal_time = None
+        min_gval = float('inf')
 
-    def createPath(goal_loc):
-        way = []
-        while goal_loc != start_loc:
-            temp = 9999999
-            minState = None
-            way.append(goal_loc)
-            # looping over all successor nodes
-            next_states = problem.get_all_successors(goal_loc)
-            for successor in next_states:
-                if temp > gVal[successor]:
-                    temp = gVal[successor]
-                    minState = successor
-            #updating goal state value
-            goal_loc=minState
+        for t in range(0, 1000):  # Arbitrary upper limit for time
+            if (goal_loc, t) in gVal and gVal[(goal_loc, t)] < min_gval:
+                min_gval = gVal[(goal_loc, t)]
+                goal_time = t
 
-        way.append(goal_loc)
-        return way[::-1]
+        # #print(f"Goal time identified: {goal_time} with gVal: {min_gval}")
+        return goal_time
 
+    def createPath(goal_loc, goal_time, agent_cons=None):
+        path = []  # To store the reconstructed path
+        current_loc, current_time = goal_loc, goal_time  # Start at goal location and time
 
-  
+        # ##print("Starting path reconstruction from:", (current_loc, current_time))
+        while (current_loc, current_time) != (start_loc, 0):  # Stop when reaching the start
+            path.append((current_loc, current_time))
+            temp = float('inf')  # Initialize to find the minimum gVal
+            best_prev = None  # Best predecessor state
 
+            # Loop through predecessors (or successors with time-1)
+            next_states, _ = problem.get_all_successors(current_loc, agent_cons, current_time - 1)
 
+            for prev_loc in next_states:
+                if (prev_loc, current_time - 1) in gVal:
+                    if gVal[(prev_loc, current_time - 1)] < temp:
+                        temp = gVal[(prev_loc, current_time - 1)]
+                        best_prev = prev_loc
 
-    def main():
+            if best_prev is None:
+                ##print("Error: No valid predecessor found! Path reconstruction failed.")
+                return []
+
+            # Move to the best predecessor
+            current_loc = best_prev
+            current_time -= 1
+
+        path.append((start_loc, 0))  # Add the start location
+        # ##print("Path reconstruction complete.")
+        return path[::-1]  # Reverse the path to go from start to goal
+
+    def main(path, prev_cons):
+        f = True
+        endPath = []
         initialize()
-        while True:
-            compute_shortest_path()
-            print(createPath(goal_loc))
-            # print(reconstruct_path())
-            # Waitfor changes in edge costs; 
-            # {21} forall directed edges (u,v) with changed edge costs 
-            # {22} Update the edge cost c(u,v); {23} UpdateVertex(v);
-            return 
+        time =  0 
+        itr = 0
+        # prev_cons = ['']
+
+        while f:
+            #print("Iteration inside replan", itr)
+            # #print(f"Calling shortest path at time {time}", agent_constraints, goal_loc)
+            # if(not replan or itr != 0):
+            #     goal_time =  compute_shortest_path(agent_constraints,time)
+            #     #print("Shortest path computation done.")
+            #     path = createPath(goal_loc,goal_time,agent_constraints)
+            #     #print(path)
+            #     return
+            if(replan):
+                print("Top Key in open_list: ", top_key(open_list))
+                print("Goal RHS:", rhs.get((goal_loc, time), float('inf')))
+                print("Goal gVal:", gVal.get((goal_loc, time), float('inf')))
+
+            itr+=1
+
+            goal_time =  compute_shortest_path(agent_constraints,time)
+            #print("Shortest path computation done.")
+            path = createPath(goal_loc,goal_time,agent_constraints)
+
+            # if(replan and itr==10):
+            #     return 
+            #print("path", path)
+            # return
+            if(prev_cons != agent_constraints and agent_constraints):
+                # return
+                #print(agent_constraints)
+                if(not prev_cons):
+                    prev_cons = agent_constraints
+                print("lpa star agent cons have changed ", agent_constraints, prev_cons)
+                for type in prev_cons:
+                    #print("this is type inside ", type)
+                    if(type =="vertex" or type == "env"):
+                        for t in prev_cons[type]:
+                            for pos in prev_cons[type][t]:
+                                if(prev_cons[type][t] not in agent_constraints[type][t]):
+                                    print("this is cons inside ",t, prev_cons[type][t], agent_constraints[type][t])
+                                    gVal[(pos, t)] = float('inf')
+                                    rhs[(pos, t)] = float('inf')
+                                    succs,_ = problem.get_all_successors(pos,agent_constraints, t +1) #want to change cost of u->v
+                                    for succ in succs:
+                                        update_vertex(succ,t+1,agent_constraints, True)
+                                        # start_loc = pos
+                                    time = t
+                            # break #???
+                    else:
+                        for t in prev_cons[type]:
+                            for pos in prev_cons[type][t]:
+                                #print("WRITE EDGE CONS STUFF")
+                                pass
+                
+            else:
+                f = False   
+        prev_cons = agent_constraints  
+        print("changin prev cons", prev_cons)        
+        return (path, gVal, rhs, prev_cons)
+            ####print(reconstruct_path())
+        #     for i,(pos,t) in enumerate(path[:len(path)-1]):
+        #         next_pos, next_time = path[i+1]
+        #         #print("next and goal ", next_pos, goal_loc)
+        #         endPath.append((pos,t))
+        #         if(vertex_cons and next_time in vertex_cons):
+        #             cons = vertex_cons[next_time]
+        #             #print(i+1," time is constrained ", cons,agent_constraints,vertex_cons)
+                  
+        #             if(next_pos in cons):
+        #                 #print("updating because cons",next_pos )
+            
+        #                 gVal[(next_pos, next_time)] = float('inf')
+        #                 rhs[(next_pos, next_time)] = float('inf')
+
+        #                 succs,_ = problem.get_all_successors(next_pos,agent_constraints, next_time+1) #want to change cost of u->v
+        #                 for succ in succs:
+        #                     update_vertex(succ,next_time+1,agent_constraints, True)
+        #                     # start_loc = pos
+        #                     # ###print("new start ", pos)
+        #                 # start_loc = pos
+        #                 time = t
+        #                 ###print("Restarting path search from", pos, "at time", t)
+        #                 break 
+        #             # else:
+        #             #     ####print("loc not const")
+        #             #     break
+        #         if(edge_cons and i in edge_cons):
+        #             consts = edge_cons[i]
+        #             ##print("edge , ",consts)
+        #             for const in consts:
+        #                 ####print("look edge cons ", const)
+        #                 if(const[0] == pos and const[1] == next_pos):
+        #                     ##print("violation of edge cons")
+        #                     update_vertex(next_pos,next_time,agent_constraints)
+        #         if next_pos is goal_loc:
+        #                 f = False
+        #                 ###print("goal found")
+        #                 break
+        #         time  = next_time
+        #     # ###print("Restarting path search...")
+        #     # compute_shortest_path(agent_constraints, time)
+        #     # path = createPath(goal_loc,goal_time)
+        #     # ###print(path)
+        #     ###print("dome")
+        # # ###print("calling create path")
+        # # ###print(gVal)
+        # # ###print(rhs)
+        # return (path, gVal, rhs, open_list)
+            # ####print(reconstruct_path())
     
-    main()
+    return (main(path, prev_cons))
 
 
-
-
-        
-
-
+def push_node2(open_list, node, priority):
+    # ####print("pushing node ", node)
+    heapq.heappush(open_list, (priority[0],priority[1],(node[0],node[1])))
+    # ####print("this is open " ,open_list)
 
 def push_node(open_list, node_loc, priority, time):
-    # print("pushing node ", node)
-    heapq.heappush(open_list, (priority[0],priority[1],node_loc,time))
-    # print("this is open " ,open_list)
+    heapq.heappush(open_list, (priority[0], priority[1], time, node_loc))
 
-# def push_node(open_list, node, priority):
-#     loc, time = node["loc"], node["time"]
-#     if (loc, time) in node_map:
-#         existing_node = node_map[(loc, time)]
-#         existing_priority = existing_node["priority"]
-
-#         # Replace only if the new priority is better
-#         if priority < existing_priority:
-#             remove_node(open_list, existing_node, node_map)
-
-#     # Add the node to the map and heap
-#     node_map[(loc, time)] = node
-#     node["priority"] = priority  # Update the node's priority
-#     heapq.heappush(open_list, (priority[0], priority[1], time, node))
   
 
 def pop_node(open_list):
     if(len(open_list) == 0):
         return
-    _, _, loc,time = heapq.heappop(open_list)
-    return (loc,time)
+    # ###print("this is open list ", open_list)
+    _, _, time,node = heapq.heappop(open_list)
+    # ###print("popped ", node)
+    return (node,time)
 
 
 def top_key(open_list):
-    print("this is top",open_list[0])
-    print("open list", open_list)
-
     if len(open_list) == 0:
         return (float('inf'), float('inf'))
+    # ###print("this is top",open_list[0])
+    ####print("open list", open_list)
     return open_list[0]
 
-def remove_node(open_list, node_loc, time):
+def remove_node(open_list, node):
     rem = (float('-inf'), float('-inf'))
-    update(open_list,node_loc,rem, time)
+    update(open_list,node,rem)
     a = pop_node(open_list)
 
-def update(open_list, node_loc, priority,time):
-    for index, (p1, p2, loc,t) in enumerate(open_list):
-        if node_loc == loc:
-                if (p1,p2) <= priority:
-                    break
-                del open_list[index]
-                open_list.append((priority[0],priority[1],loc, time))
-                heapq.heapify(open_list)
-                break
-    else:
-            print("calling push2")
-            push_node(open_list,node_loc, priority,time)
+def update(open_list, node, priority):
+    loc, time = node  # Unpack location and time
 
+    for index, (p1, p2, t, loc_in_list) in enumerate(open_list):
+        # Check if node (location, time) matches
+        if loc == loc_in_list and t == time:
+            # If the new priority is not better, do nothing
+            if (p1, p2) <= priority:
+                return
+            # Remove the old entry and add the updated one
+            del open_list[index]
+            heapq.heappush(open_list, (priority[0], priority[1], time, loc))
+            heapq.heapify(open_list)
+            return
+
+    # If the node was not found, add it to the open list
+    push_node(open_list, node[0], priority, node[1])
 def compare_nodes(n1, n2):
     """Return true is n1 is better than n2."""
     return n1['g_val'] + n1['h_val'] < n2['g_val'] + n2['h_val']
+
+
+
+
+#get all successors returns the actual pos and the obstructed pos. 
+# the obs pos will then be set to inf
