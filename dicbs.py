@@ -51,7 +51,7 @@ def detect_collision(path1, path2, i,j):
 
 def detect_collisions(paths):
     res = []
-    print("detecting collision for ", paths)
+    # print("detecting collision for ", paths)
 
     for i, p1 in enumerate(paths):
         for j, p2 in enumerate(paths[i+1:]):
@@ -61,6 +61,22 @@ def detect_collisions(paths):
                 res.append(collision)
     # print("these are first collisions",res)
     return res
+
+def detetct_obstacle_collision(path, env_cons):
+    for i in env_cons:
+        print("checking ", path[i][0], env_cons[i])
+        if(path[i][0] in env_cons[i]):
+            return True
+    return False
+
+def detect_obstacle_collisions(paths, env_cons):
+    obstacle_colliding_agents = []
+    print("getting env cons", env_cons)
+    for i,path in enumerate(paths):
+        if(detetct_obstacle_collision(path,env_cons)):
+            obstacle_colliding_agents.append(i)
+    return obstacle_colliding_agents
+
 
 def standard_splitting(collision):
     res = []
@@ -185,10 +201,36 @@ def add_cons(type, time, loc, agent_id, all_cons,type2 ): #type is if its pos or
 
     
 def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agents is start loc of agents
+    num_of_generated = 0       
+
+    def replan_path():
+                    nonlocal num_of_generated 
+                    previous_path = childNode["paths"][agent_id]
+                    # print("prev path ", previous_path)
+                    # backtrack_time = max(0, t - alpha)
+                    backtrack_time = 0
+                    # print("backtrack time ", backtrack_time)
+                    start_position = previous_path[backtrack_time]
+                    start_time = len(previous_path) - backtrack_time
+                    # print("trying to find new path for agent with cons ",agent_id, childNode["constraints"][agent_id], start_position[0], goals[agent_id])
+                    new_path = None
+                    # if(t == 8):
+                    #     return
+                    new_path = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,childNode["constraints"][agent_id], True )
+                    if new_path:
+                        childNode["paths"][agent_id] = previous_path[:backtrack_time] + new_path
+                        # print("new path found for agent ", agent_id , childNode["paths"][agent_id])
+                        # print("all path in this node " , childNode["paths"])
+                        childNode["cost"] = sum(len(path) for path in childNode["paths"])
+                        childNode["collisions"] = detect_collisions(childNode["paths"])
+                        print("this child generated with collisions ", childNode)
+                        num_of_generated = push_node(ECT,childNode, num_of_generated)
+                        return childNode
+                    else:
+                        return None
     t = 0
     EC = set()
     ECT = []
-    num_of_generated = 0       
     constraints = {agent_id: {"positive":{"vertex":{}, "edge": {}, 'env': {}},"negative":{"vertex":{}, "edge": {}, 'env': {}}} for agent_id in range(len(agents))}
     # print("beg cons", constraints)
     collisions = []
@@ -197,7 +239,7 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
   
     if not root_paths:
         return None
-    root = {'cost': sum(len(path) for path in root_paths),
+    node = {'cost': sum(len(path) for path in root_paths),
             'constraints':  {agent_id: constraints[agent_id].copy() for agent_id in constraints},
             'paths': [path.copy() for path in root_paths]}
     # ECT['Root'] = {
@@ -205,23 +247,27 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
     #     'constraints': {agent_id: constraints[agent_id].copy() for agent_id in constraints},
     #     'paths': [path.copy() for path in paths]
     # }
-    root["collisions"] = detect_collisions(root_paths)
-    num_of_generated =  push_node(ECT,root, num_of_generated)
-    node = {}
+    node["collisions"] = detect_collisions(root_paths)
+    num_of_generated =  push_node(ECT,node, num_of_generated)
+    print("root pushed ", len(ECT))
+    # node = {}
 
     max_time = max(start_time + duration for _, start_time, duration in dynamic_obstacles)
+    env_cons = {}
 
-    while t <= max_time or len(ECT) > 0 :
-        print("Iteration: ", t)
+
+    while t <= max_time or len(node["collisions"]) > 0  :
+        print("Iteration: \n", t)
         affected_agents = set()
         EC_t = environment_changes(EC, t, dynamic_obstacles)
         print("This is change ", EC_t)
         node = pop_node(ECT)
-        print("this node popped ", node)
+        # print("this node popped \n", node)
         newNode = deepcopy(node)
         if not EC_t and t > 0:
-            if(node["collisions"] == []):
+            if(node["collisions"] == []):              
                 print("no conflict and env change")
+                num_of_generated = push_node(ECT,newNode, num_of_generated)
                 t += 1
                 continue  # Ensure the loop continues until max_time
             #if you have collisions you need to add constraints??
@@ -236,36 +282,49 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
 
         # Go through env changes and find cons and affected agents
         for change in EC_t:
+            env_cons[change[1]] = [change[0]]
             for agent_id in range(len(agents)):
                 if is_agent_affected(newNode["paths"][agent_id], EC_t):
-                    print("this is change ", change)
-                    print("this agent is affected ", agent_id,)
+                    # print("this is change ", change)
+                    # print("this agent is affected ", agent_id,)
                     agent_constraints = newNode["constraints"][agent_id]
-                    print("this agent is affected ", agent_id,agent_constraints)
-
-                    # agent_constraints['env'].append(change)
+                    # print("this agent is affected ", agent_id,agent_constraints)
                     agent_constraints["negative"]['env'][change[1]] = [change[0]]
-
                     affected_agents.add(agent_id)
-                    print("this is agent constraints for affected agent ", agent_id,  agent_constraints["negative"]['env'])
                     newNode["constraints"][agent_id] = agent_constraints
+                    # print("this is agent constraints after change ",  newNode["constraints"][agent_id])
 
-    # Find new paths for agents affected by env changes
-        for agent_id in affected_agents:
+        for agent_id in range(len(agents)):
+            if(agent_id not in affected_agents):
+                for cons in env_cons:
+                    agent_constraints = newNode["constraints"][agent_id]
+                    agent_constraints["negative"]['env'][cons] = env_cons[cons]
+                    newNode["constraints"][agent_id] = agent_constraints
+        print("this is env cons", env_cons)
+        print("this is agent cons", newNode["constraints"])
+
+        obstacle_colliding_agents = detect_obstacle_collisions(newNode["paths"], env_cons)
+        print("these are the obstacle colliding agents ", obstacle_colliding_agents)
+
+
+    # # Find new paths for agents affected by env changes
+        for agent_id in obstacle_colliding_agents:
+
+            # replan_path()
+
             backtrack_time = max(0, t - alpha)
             previous_path = newNode["paths"][agent_id]
-            # print("prev path ", previous_path)
+            print("prev path ", previous_path)
             print("backtrack time ", backtrack_time)
 
             start_position = previous_path[backtrack_time]
             start_time = len(previous_path) - backtrack_time
-            print("trying to find new path for agent with cons ",agent_id, newNode["constraints"][agent_id], start_position[0])
+            print("trying to find new path for agent with cons -env ",agent_id, newNode["constraints"][agent_id], start_position[0])
             new_path = None
             new_path = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,newNode["constraints"][agent_id], True )
             if new_path:
-                print("new path found for agent ", agent_id , new_path)
+                # print("new path found for agent ", agent_id , new_path)
                 newNode["paths"][agent_id] = previous_path[:backtrack_time] + new_path
-                newNode["constraints"][agent_id] = {'constraints': constraints[agent_id].copy()}
             else:
                 return None
         newNode["cost"] = sum(len(path) for path in newNode["paths"]),
@@ -277,44 +336,33 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
             collisions = detect_collisions(newNode["paths"])
         print("these are the collisions ", collisions)
 
-        if(len(collisions) > 0):
-            collision_cons = standard_splitting(collisions[0])
-            # print("these are the constraints ", collision_cons)
-            for constraint in collision_cons:
-                agent_id = constraint["agent"]
-                childNode = {'cost': 0,
-                'constraints': deepcopy(newNode["constraints"]), 
-                'paths': deepcopy( newNode["paths"]),
-                'collisions': []}
-                # affected_agents.add(agent)
-                if constraint["vertex"]:
-                    childNode["constraints"] = add_cons("negative",constraint['timestep'],constraint['loc'],agent_id,childNode["constraints"],"vertex")
-                   
-                    # newNode["constraints"].append(constraint)
-                else: 
-                   childNode["constraints"]= add_cons("negative",constraint['timestep'],constraint['loc'],agent_id,childNode["constraints"],"edge")
 
-                # new_constraints[agent].add(constraint)
-                previous_path = childNode["paths"][agent_id]
-            # print("prev path ", previous_path)
-                backtrack_time = max(0, t - alpha)
-                # print("backtrack time ", backtrack_time)
-                start_position = previous_path[backtrack_time]
-                start_time = len(previous_path) - backtrack_time
-                print("trying to find new path for agent with cons ",agent_id, childNode["constraints"][agent_id], start_position[0])
-                new_path = None
-                new_path = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,childNode["constraints"][agent_id], True )
-                if new_path:
-                    childNode["paths"][agent_id] = previous_path[:backtrack_time] + new_path
-                    print("new path found for agent ", agent_id , childNode["paths"][agent_id])
-                    print("all path in this node " , childNode["paths"])
-                    childNode["cost"] = sum(len(path) for path in childNode["paths"])
-                    childNode["collisions"] = detect_collisions(childNode["paths"])
-                    print("this child generated with collisions ", childNode)
-                    num_of_generated = push_node(ECT,childNode, num_of_generated)
-                else:
-                    return None
-            print("this is affected agents and their cons", affected_agents,  childNode["constraints"][agent_id])
+
+        if(len(collisions) > 0):
+                collision_cons = standard_splitting(collisions[0])
+                print("this is the collision constraint ", collision_cons)
+                for constraint in collision_cons:
+                    agent_id = constraint["agent"]
+                    childNode = {'cost': 0,
+                    'constraints': deepcopy(newNode["constraints"]), 
+                    'paths': deepcopy( newNode["paths"]),
+                    'collisions': []}
+                    if constraint["vertex"]:
+                        print("this is childNode cons before ", childNode['constraints'])
+                        childNode["constraints"] = add_cons("negative",constraint['timestep'],constraint['loc'],agent_id,childNode["constraints"],"vertex")
+                    else: 
+                        childNode["constraints"]= add_cons("negative",constraint['timestep'],constraint['loc'],agent_id,childNode["constraints"],"edge")
+
+                    print("replanning path for childNode with collisions ", childNode["constraints"], agent_id)
+                    childNode = replan_path()
+                    if(childNode is None):
+                        return None
+                # print("this is affected agents and their cons", affected_agents,  childNode["constraints"][agent_id])
+
+        else:
+                print("no collisions and no collision with obstacles pushing the same node we popped rn")
+                num_of_generated = push_node(ECT,newNode, num_of_generated)
+
 
        
         # collisions = detect_collisions(paths)
@@ -342,12 +390,14 @@ def validate_paths_against_obstacles(paths, dynamic_obstacles):
             if (position, time) in obstacle_constraints:
                 return False
     return True
+    
 
 def push_node(open_list, node, num_of_generated):
         heapq.heappush(open_list, (node['cost'], len(node['collisions']),num_of_generated, node))
+        print("Generate node {}".format(num_of_generated))
         return num_of_generated +1
-        # print("Generate node {}".format(self.num_of_generated))
+
 def pop_node(open_list):
         _, _, id, node = heapq.heappop(open_list)
-        # print("Expand node {}".format(id))
+        print("Expand node {}".format(id))
         return node
