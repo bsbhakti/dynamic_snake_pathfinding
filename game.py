@@ -4,12 +4,13 @@ from dicbs import dicbs  # Import dicbs function
 from run_exp import import_mapf_instance
 from instances import scenarios
 from pdb import set_trace as bp
+from snakeProblem import SnakeProblem
 
 # Import map and scenarios
 my_map, _, _ = import_mapf_instance("exp1.txt")
 
 # Get scenario for two agents
-i = 48
+i = 35
 starts_1 = scenarios[i]['agents'][0]
 goals_1 = scenarios[i]['goals'][0]
 starts_2 = scenarios[i]['agents'][1]
@@ -17,6 +18,11 @@ goals_2 = scenarios[i]['goals'][1]
 my_map = scenarios[i]['grid']
 dynamic_obstacles = [(scenarios[i]['dynamic_obstacles'][0]['position'], scenarios[i]['dynamic_obstacles'][0]['start_time'], scenarios[i]['dynamic_obstacles'][0]['duration'])]
 
+for j in range (len(my_map)):
+    for k in range (len(my_map[j])):
+        if my_map[j][k] == 1:
+            dynamic_obstacles.append(((j,k),0,len(my_map)*len(my_map[j])))
+    
 # Print agent start and goal positions
 print("Start Agent 1: ", starts_1)
 print("Goal Agent 1: ", goals_1)
@@ -91,7 +97,7 @@ goals_1 = [(fruit_position_1[1] // block_size, fruit_position_1[0] // block_size
 agents_2 = [(prev_fruit_position_2[1] // block_size, prev_fruit_position_2[0] // block_size)]
 goals_2 = [(fruit_position_2[1] // block_size, fruit_position_2[0] // block_size)]
 
-paths_1, paths_2 = dicbs([agents_1[0], agents_2[0]], [goals_1[0], goals_2[0]], env, dynamic_obstacles)
+paths_1, paths_2 = SnakeProblem(env, [agents_1[0], agents_2[0]], [goals_1[0], goals_2[0]], dynamic_obstacles).find_solution()
 
 if not paths_1 or not paths_1[0]:
     print("No path found for Agent 1!")

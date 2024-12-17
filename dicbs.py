@@ -63,7 +63,7 @@ def detect_collisions(paths):
 
 def detetct_obstacle_collision(path, env_cons):
     for i in env_cons:
-        print("checking ",i, env_cons[i], path[i])
+        # print("checking ",i, env_cons[i], path[i])
         if(len(path) >i and path[i][0] in env_cons[i]):
             return True
     return False
