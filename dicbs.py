@@ -165,14 +165,14 @@ def cbs_h2(agents, goals, heuristics, constraints_per_agent, problem):
     for agent_id, (agent, goal) in enumerate(zip(agents, goals)):
         constraints = constraints_per_agent.get(agent_id, {})
       
-        path, gVal, rhs, open_list, prev_cons = lpa_star(agent,goal,problem,agent_id, heuristics)
+        path, gVal, rhs, prev_cons = lpa_star(agent,goal,problem,agent_id, heuristics)
         # path = slpa_search(agent,goal,problem.map)
         if not path:
             return None
-        print("path was found by lpa")
+        print("path was found by lpa", prev_cons)
         paths.append(path)
-        agent_states.append([deepcopy(gVal), deepcopy(rhs), deepcopy(open_list), deepcopy(prev_cons)])
-    print("initial paths found by cbs_h2 ", paths)
+        agent_states.append([deepcopy(gVal), deepcopy(rhs), deepcopy(prev_cons)])
+    print("initial paths found by cbs_h2 ", paths, prev_cons)
     return (paths, agent_states)
 
 def is_agent_affected(path, EC_t):
@@ -217,14 +217,14 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
                     new_path = None
                     # if(t == 8):
                     #     return
-                    new_path, gVal, rhs, open_list, prev_cons = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,childNode["constraints"][agent_id], True, childNode["agent_states"][agent_id],previous_path )
+                    new_path, gVal, rhs, prev_cons = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,childNode["constraints"][agent_id], True, childNode["agent_states"][agent_id],previous_path )
                     if new_path:
                         childNode["paths"][agent_id] = previous_path[:backtrack_time] + new_path
-                        print("new path found for agent ", agent_id , childNode["paths"][agent_id])
+                        print("new path found for agent ", agent_id , childNode["paths"][agent_id], prev_cons)
                         # print("all path in this node " , childNode["paths"])
                         childNode["cost"] = sum(len(path) for path in childNode["paths"])
                         childNode["collisions"] = detect_collisions(childNode["paths"])
-                        childNode["agent_states"][agent_id] = [deepcopy(gVal), deepcopy(rhs), deepcopy(open_list), deepcopy(prev_cons)]
+                        childNode["agent_states"][agent_id] = [deepcopy(gVal), deepcopy(rhs), deepcopy(prev_cons)]
 
                         # print("this child generated with collisions ", childNode)
                         num_of_generated = push_node(ECT,childNode, num_of_generated)
@@ -328,11 +328,11 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
             start_time = len(previous_path) - backtrack_time
             print("trying to find new path for agent with cons -env ",agent_id, newNode["constraints"][agent_id], start_position[0])
             new_path = None
-            new_path, gVal, rhs, open_list, prev_cons = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,newNode["constraints"][agent_id], True, newNode["agent_states"][agent_id],previous_path )
+            new_path, gVal, rhs, prev_cons = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,newNode["constraints"][agent_id], True, newNode["agent_states"][agent_id],previous_path )
             if new_path:
-                print("new path found for agent ", agent_id , new_path)
+                print("new path found for agent ", agent_id , new_path, prev_cons)
                 newNode["paths"][agent_id] = previous_path[:backtrack_time] + new_path
-                newNode["agent_states"][agent_id] = [deepcopy(gVal),deepcopy(rhs), deepcopy(open_list),deepcopy(prev_cons)]
+                newNode["agent_states"][agent_id] = [deepcopy(gVal),deepcopy(rhs),deepcopy(prev_cons)]
 
             else:
                 print("no path found when trying to solve env cons")
@@ -345,8 +345,6 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
         else:
             collisions = detect_collisions(newNode["paths"])
         print("these are the collisions ", collisions)
-
-
 
         if(len(collisions) > 0):
                 collision_cons = standard_splitting(collisions[0])

@@ -20,6 +20,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
         gVal = agent_state[0]
         rhs = agent_state[1]
         prev_cons = agent_state[2]
+        print("replan",prev_cons)
         open_list = []
         path = path
         # #print(gVal,"\n", rhs, "\n", open_list, "\n")
@@ -76,7 +77,6 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
 
     def update_vertex(node_loc, node_time, agent_cons=None, is_constrained=False):
         #print("update vertex called ", node_loc, node_time,   rhs[(node_loc, node_time)])
-
         if node_loc in vertex_cons.get(node_time, []):
             #print("THIS IS constrained loc ", node_loc, node_time)
             rhs[(node_loc,node_time)] = float('inf')
@@ -196,38 +196,39 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
             #     return 
             #print("path", path)
             # return
-            if(prev_cons and prev_cons != agent_constraints and agent_constraints):
+            if(prev_cons != agent_constraints and agent_constraints):
                 # return
                 #print(agent_constraints)
-                print("lpa star agent cons have changed ", agent_constraints)
-                prev_cons = agent_constraints
+                if(not prev_cons):
+                    prev_cons = agent_constraints
+                print("lpa star agent cons have changed ", agent_constraints, prev_cons)
                 for type in prev_cons:
                     #print("this is type inside ", type)
                     if(type =="vertex" or type == "env"):
                         for t in prev_cons[type]:
                             for pos in prev_cons[type][t]:
-                                print("this is cons inside ",t, prev_cons[type][t])
-                                gVal[(pos, t)] = float('inf')
-                                rhs[(pos, t)] = float('inf')
-                                succs,_ = problem.get_all_successors(pos,agent_constraints, t +1) #want to change cost of u->v
-                                for succ in succs:
-                                    update_vertex(succ,t+1,agent_constraints, True)
-                                    # start_loc = pos
-                                time = t
+                                if(prev_cons[type][t] not in agent_constraints[type][t]):
+                                    print("this is cons inside ",t, prev_cons[type][t], agent_constraints[type][t])
+                                    gVal[(pos, t)] = float('inf')
+                                    rhs[(pos, t)] = float('inf')
+                                    succs,_ = problem.get_all_successors(pos,agent_constraints, t +1) #want to change cost of u->v
+                                    for succ in succs:
+                                        update_vertex(succ,t+1,agent_constraints, True)
+                                        # start_loc = pos
+                                    time = t
                             # break #???
                     else:
                         for t in prev_cons[type]:
                             for pos in prev_cons[type][t]:
                                 #print("WRITE EDGE CONS STUFF")
                                 pass
+                
             else:
-                f = False
-
-                       
-        return (path, gVal, rhs, open_list, prev_cons)
+                f = False   
+        prev_cons = agent_constraints  
+        print("changin prev cons", prev_cons)        
+        return (path, gVal, rhs, prev_cons)
             ####print(reconstruct_path())
-   
-
         #     for i,(pos,t) in enumerate(path[:len(path)-1]):
         #         next_pos, next_time = path[i+1]
         #         #print("next and goal ", next_pos, goal_loc)
@@ -277,9 +278,6 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
         # # ###print(rhs)
         # return (path, gVal, rhs, open_list)
             # ####print(reconstruct_path())
-            # Waitfor changes in edge costs; 
-            # {21} forall directed edges (u,v) with changed edge costs 
-            # {22} Update the edge cost c(u,v); {23} UpdateVertex(v);
     
     return (main(path, prev_cons))
 

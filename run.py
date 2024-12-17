@@ -55,7 +55,7 @@ for i, scenario in enumerate(scenarios):
         "paths": agent_paths,
         "time_taken": elapsed_time
     })
-    break
+    # break
 
 # Write results to JSON (flat format)
 output_file = "results.json"
