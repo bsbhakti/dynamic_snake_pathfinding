@@ -162,17 +162,19 @@ def detect_conflicts(paths):
 
 def cbs_h2(agents, goals, heuristics, constraints_per_agent, problem):
     paths = []
+    agent_states = []
     for agent_id, (agent, goal) in enumerate(zip(agents, goals)):
         constraints = constraints_per_agent.get(agent_id, {})
       
-        path = lpa_star(agent,goal,problem,agent_id, heuristics)
+        path, gVal, rhs, open_list = lpa_star(agent,goal,problem,agent_id, heuristics)
         # path = slpa_search(agent,goal,problem.map)
         if not path:
             return None
         print("path was found by lpa")
         paths.append(path)
+        agent_states.append([deepcopy(gVal), deepcopy(rhs), deepcopy(open_list)])
     print("initial paths found by cbs_h2 ", paths)
-    return paths
+    return (paths, agent_states)
 
 def is_agent_affected(path, EC_t):
     for (pos,time) in (path):
@@ -206,24 +208,26 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
     def replan_path():
                     nonlocal num_of_generated 
                     previous_path = childNode["paths"][agent_id]
-                    # print("prev path ", previous_path)
+                    print("prev path ", previous_path)
                     # backtrack_time = max(0, t - alpha)
                     backtrack_time = 0
                     # print("backtrack time ", backtrack_time)
                     start_position = previous_path[backtrack_time]
                     start_time = len(previous_path) - backtrack_time
-                    # print("trying to find new path for agent with cons ",agent_id, childNode["constraints"][agent_id], start_position[0], goals[agent_id])
+                    print("trying to find new path for agent with cons -inside replan ",agent_id, childNode["constraints"][agent_id], start_position[0], goals[agent_id], previous_path)
                     new_path = None
                     # if(t == 8):
                     #     return
-                    new_path = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,childNode["constraints"][agent_id], True )
+                    new_path, gVal, rhs, open_list = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,childNode["constraints"][agent_id], True, childNode["agent_states"][agent_id],previous_path )
                     if new_path:
                         childNode["paths"][agent_id] = previous_path[:backtrack_time] + new_path
-                        # print("new path found for agent ", agent_id , childNode["paths"][agent_id])
+                        print("new path found for agent ", agent_id , childNode["paths"][agent_id])
                         # print("all path in this node " , childNode["paths"])
                         childNode["cost"] = sum(len(path) for path in childNode["paths"])
                         childNode["collisions"] = detect_collisions(childNode["paths"])
-                        print("this child generated with collisions ", childNode)
+                        childNode["agent_states"][agent_id] = [deepcopy(gVal), deepcopy(rhs), deepcopy(open_list)]
+
+                        # print("this child generated with collisions ", childNode)
                         num_of_generated = push_node(ECT,childNode, num_of_generated)
                         return childNode
                     else:
@@ -235,13 +239,15 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
     # print("beg cons", constraints)
     collisions = []
 
-    root_paths = cbs_h2(agents, goals, heuristics, constraints, problem)
+    root_paths, root_states = cbs_h2(agents, goals, heuristics, constraints, problem)
+    print(root_states)
   
     if not root_paths:
         return None
     node = {'cost': sum(len(path) for path in root_paths),
             'constraints':  {agent_id: constraints[agent_id].copy() for agent_id in constraints},
-            'paths': [path.copy() for path in root_paths]}
+            'paths': [path.copy() for path in root_paths],
+            'agent_states': [agent_state.copy() for agent_state in root_states]}
     # ECT['Root'] = {
     #     'cost': sum(len(path) for path in paths),
     #     'constraints': {agent_id: constraints[agent_id].copy() for agent_id in constraints},
@@ -250,7 +256,7 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
     node["collisions"] = detect_collisions(root_paths)
     num_of_generated =  push_node(ECT,node, num_of_generated)
     print("root pushed ", len(ECT))
-    # node = {}
+
 
     max_time = max(start_time + duration for _, start_time, duration in dynamic_obstacles)
     env_cons = {}
@@ -312,7 +318,8 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
 
             # replan_path()
 
-            backtrack_time = max(0, t - alpha)
+            # backtrack_time = max(0, t - alpha)
+            backtrack_time = 0
             previous_path = newNode["paths"][agent_id]
             print("prev path ", previous_path)
             print("backtrack time ", backtrack_time)
@@ -321,10 +328,12 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
             start_time = len(previous_path) - backtrack_time
             print("trying to find new path for agent with cons -env ",agent_id, newNode["constraints"][agent_id], start_position[0])
             new_path = None
-            new_path = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,newNode["constraints"][agent_id], True )
+            new_path, gVal, rhs, open_list = lpa_star(start_position[0],goals[agent_id], problem, agent_id, heuristics,newNode["constraints"][agent_id], True, newNode["agent_states"][agent_id],previous_path )
             if new_path:
                 # print("new path found for agent ", agent_id , new_path)
                 newNode["paths"][agent_id] = previous_path[:backtrack_time] + new_path
+                newNode["agent_states"][agent_id] = [deepcopy(gVal),deepcopy(rhs), deepcopy(open_list)]
+
             else:
                 return None
         newNode["cost"] = sum(len(path) for path in newNode["paths"]),
@@ -346,15 +355,17 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,problem ,alpha=3): #agent
                     childNode = {'cost': 0,
                     'constraints': deepcopy(newNode["constraints"]), 
                     'paths': deepcopy( newNode["paths"]),
-                    'collisions': []}
+                    'collisions': [],
+                    "agent_states": deepcopy( newNode["agent_states"])}
                     if constraint["vertex"]:
                         print("this is childNode cons before ", childNode['constraints'])
-                        childNode["constraints"] = add_cons("negative",constraint['timestep'],constraint['loc'],agent_id,childNode["constraints"],"vertex")
+                        childNode["constraints"] = add_cons("negative",constraint['timestep'],constraint['loc'],agent_id,newNode["constraints"],"vertex")
                     else: 
-                        childNode["constraints"]= add_cons("negative",constraint['timestep'],constraint['loc'],agent_id,childNode["constraints"],"edge")
+                        childNode["constraints"]= add_cons("negative",constraint['timestep'],constraint['loc'],agent_id,newNode["constraints"],"edge")
 
                     print("replanning path for childNode with collisions ", childNode["constraints"], agent_id)
                     childNode = replan_path()
+                    
                     if(childNode is None):
                         return None
                 # print("this is affected agents and their cons", affected_agents,  childNode["constraints"][agent_id])

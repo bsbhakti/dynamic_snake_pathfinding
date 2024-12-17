@@ -14,10 +14,20 @@ path_costs = {
 }
 
 
-def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraints=None, stop = False):
-    open_list = []
-    rhs = defaultdict(lambda: float('inf'))  # Lazy initialization to inf
-    gVal = defaultdict(lambda: float('inf'))  # Lazy initialization to inf
+def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraints=None, replan = False, agent_state=False, path = None):
+    if(replan):
+        print("REPLANNING")
+        gVal = agent_state[0]
+        rhs = agent_state[1]
+        open_list = []
+        path = path
+        # print(gVal,"\n", rhs, "\n", open_list, "\n")
+    else:
+        path = None
+        open_list = []
+        rhs = defaultdict(lambda: float('inf'))  # Lazy initialization to inf
+        gVal = defaultdict(lambda: float('inf'))  # Lazy initialization to inf
+    
     ###print("this is goal", goal_loc)
     # rhs[goal_loc] = 
     # gVal[goal_loc] = 0
@@ -48,9 +58,15 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
 
 
     def initialize():
-       
-        rhs[(start_loc, 0)] = 0
-        push_node(open_list, start_loc, calculate_key(start_loc, 0),0)
+        if not replan:
+            print("NOT REPLANNING")
+            rhs[(start_loc, 0)] = 0
+            push_node(open_list, start_loc, calculate_key(start_loc, 0),0)
+         
+        else:
+            print("init replanning", goal_loc)
+            push_node(open_list, start_loc, calculate_key(start_loc, 0),0)
+            # print(gVal, "\n", rhs, "\n", open_list, "\n")
 
 
     def update_vertex(node_loc, node_time, agent_cons=None, is_constrained=False):
@@ -81,7 +97,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
                 push_node(open_list, node_loc, calculate_key(node_loc, node_time), node_time)
 
     def compute_shortest_path(agent_cons=None, time=0):
-        # #print("open list and goal ",open_list, goal_loc)
+        # print("open list and goal ",open_list, goal_loc)
         while (
             top_key(open_list)[0] < calculate_key(goal_loc, time)[0] or
             rhs[(goal_loc, time)] != gVal[(goal_loc, time)]
@@ -107,7 +123,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
                 min_gval = gVal[(goal_loc, t)]
                 goal_time = t
 
-        # #print(f"Goal time identified: {goal_time} with gVal: {min_gval}")
+        # print(f"Goal time identified: {goal_time} with gVal: {min_gval}")
         return goal_time
 
     def createPath(goal_loc, goal_time, agent_cons=None):
@@ -141,34 +157,32 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
         # #print("Path reconstruction complete.")
         return path[::-1]  # Reverse the path to go from start to goal
 
-    def main():
+    def main(path):
         f = True
         endPath = []
         initialize()
         time =  0 
-        path = None
         itr = 0
 
         while f:
             itr+=1
-            # #print(f"Calling shortest path at time {time}", agent_constraints, goal_loc)
-            goal_time =  compute_shortest_path(agent_constraints,time)
-            # #print("Shortest path computation done.")
-            path = createPath(goal_loc,goal_time,agent_constraints)
-            #print(path)
-            # #print(gVal)
-
+            # print(f"Calling shortest path at time {time}", agent_constraints, goal_loc)
+            if(not replan or itr != 0):
+                goal_time =  compute_shortest_path(agent_constraints,time)
+                #print("Shortest path computation done.")
+                path = createPath(goal_loc,goal_time,agent_constraints)
+                # print(path)
 
             for i,(pos,t) in enumerate(path[:len(path)-1]):
                 next_pos, next_time = path[i+1]
-                # #print("next and goal ", next_pos, goal_loc)
+                print("next and goal ", next_pos, goal_loc)
                 endPath.append((pos,t))
                 if(vertex_cons and next_time in vertex_cons):
                     cons = vertex_cons[next_time]
-                    ##print(i+1," time is constrained ", cons,agent_constraints,vertex_cons)
+                    print(i+1," time is constrained ", cons,agent_constraints,vertex_cons)
                   
                     if(next_pos in cons):
-                        ##print("updating because cons",next_pos )
+                        print("updating because cons",next_pos )
             
                         gVal[(next_pos, next_time)] = float('inf')
                         rhs[(next_pos, next_time)] = float('inf')
@@ -178,11 +192,11 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
                             update_vertex(succ,next_time,agent_constraints, True)
                             # start_loc = pos
                             # ##print("new start ", pos)
-                            # break
+                            break
                         # start_loc = pos
                         time = t
                         ##print("Restarting path search from", pos, "at time", t)
-                        break 
+                        # break 
                     # else:
                     #     ###print("loc not const")
                     #     break
@@ -207,15 +221,13 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
         # ##print("calling create path")
         # ##print(gVal)
         # ##print(rhs)
-        # path = createPath(goal_loc,0, agent_constraints)
-        ##print(path)
-        return path
+        return (path, gVal, rhs, open_list)
             # ###print(reconstruct_path())
             # Waitfor changes in edge costs; 
             # {21} forall directed edges (u,v) with changed edge costs 
             # {22} Update the edge cost c(u,v); {23} UpdateVertex(v);
     
-    return (main())
+    return (main(path))
 
 
 def push_node2(open_list, node, priority):
