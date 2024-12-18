@@ -10,7 +10,7 @@ from snakeProblem import SnakeProblem
 # my_map, _, _ = import_mapf_instance("exp1.txt")
 
 # Get scenario for two agents
-i = -1
+i = 0
 starts_1 = scenarios[i]['agents'][0]
 goals_1 = scenarios[i]['goals'][0]
 starts_2 = scenarios[i]['agents'][1]
@@ -21,7 +21,7 @@ dynamic_obstacles = [(scenarios[i]['dynamic_obstacles'][0]['position'], scenario
 for j in range (len(my_map)):
     for k in range (len(my_map[j])):
         if my_map[j][k] == 1:
-            dynamic_obstacles.append(((j,k),0,len(my_map)*len(my_map[j])))
+            dynamic_obstacles.append(((j,k),0,float('inf')))
             # dynamic_obstacles.append(((j,k),0,100))
             
 # Print agent start and goal positions
