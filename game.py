@@ -1,13 +1,8 @@
 import pygame
 import time
 from dicbs import dicbs  # Import dicbs function
-from run_exp import import_mapf_instance
 from instances import scenarios
 from pdb import set_trace as bp
-from snakeProblem import SnakeProblem
-
-# Import map and scenarios
-# my_map, _, _ = import_mapf_instance("exp1.txt")
 
 # Get scenario for two agents
 i = -1
@@ -19,15 +14,14 @@ my_map = scenarios[i]['grid']
 
 dynamic_obstacles = []
 
-for j in range (len(scenarios[i]['dynamic_obstacles'])):
-    dynamic_obstacles.append((scenarios[i]['dynamic_obstacles'][j]['position'], scenarios[i]['dynamic_obstacles'][j]['start_time'], scenarios[i]['dynamic_obstacles'][j]['duration']))
-    
-for j in range (len(my_map)):
-    for k in range (len(my_map[j])):
-        if my_map[j][k] == 1:
-            dynamic_obstacles.append(((j,k),0,len(my_map)*len(my_map[j])))
-            # dynamic_obstacles.append(((j,k),0,100))
-            
+# Extract dynamic obstacles
+for j in range(len(scenarios[i]['dynamic_obstacles'])):
+    dynamic_obstacles.append((
+        scenarios[i]['dynamic_obstacles'][j]['position'],
+        scenarios[i]['dynamic_obstacles'][j]['start_time'],
+        scenarios[i]['dynamic_obstacles'][j]['duration']
+    ))
+
 # Print agent start and goal positions
 print("Start Agent 1: ", starts_1)
 print("Goal Agent 1: ", goals_1)
@@ -44,6 +38,7 @@ class GridEnvironment:
     def is_valid(self, position):
         x, y = position
         return 0 <= x < self.rows and 0 <= y < self.cols and self.my_map[x][y] == 0
+
 
 # Snake parameters
 snake_speed = 2
@@ -95,22 +90,19 @@ def game_over():
 # Initialize GridEnvironment
 env = GridEnvironment(my_map)
 
-# bp()
+# Convert start and goal positions to grid coordinates
+agents_1 = [(prev_fruit_position_1[0] // block_size, prev_fruit_position_1[1] // block_size)]
+goals_1 = [(fruit_position_1[0] // block_size, fruit_position_1[1] // block_size)]
+
+agents_2 = [(prev_fruit_position_2[0] // block_size, prev_fruit_position_2[1] // block_size)]
+goals_2 = [(fruit_position_2[0] // block_size, fruit_position_2[1] // block_size)]
 
 # Call dicbs for paths
-agents_1 = [(prev_fruit_position_1[1] // block_size, prev_fruit_position_1[0] // block_size)]
-goals_1 = [(fruit_position_1[1] // block_size, fruit_position_1[0] // block_size)]
-
-agents_2 = [(prev_fruit_position_2[1] // block_size, prev_fruit_position_2[0] // block_size)]
-goals_2 = [(fruit_position_2[1] // block_size, fruit_position_2[0] // block_size)]
-
-# bp()
-# result = SnakeProblem(env, [agents_1[0], agents_2[0]], [goals_1[0], goals_2[0]], dynamic_obstacles).find_solution()
 result = dicbs([agents_1[0], agents_2[0]], [goals_1[0], goals_2[0]], env, dynamic_obstacles)
 
 if result is None:
     print("Failed to find a solution!")
-    game_over()  # Or any other way to terminate gracefully
+    game_over()
 
 paths_1, paths_2 = result
 if not paths_1 or not paths_1[0]:
@@ -153,7 +145,7 @@ while True:
 
     # Check for collisions with static obstacles
     for snake_pos in [snake_body_1[0], snake_body_2[0]]:
-        j, i = snake_pos[0] // block_size, snake_pos[1] // block_size
+        j, i = snake_pos[0] // block_size, snake_pos[1] // block_size  # Convert pixel to grid position
         if my_map[i][j] == 1:  # Static obstacle position
             print("Snake hit a static obstacle!")
             game_over()
@@ -197,4 +189,3 @@ while True:
     pygame.display.update()
     time_step += 1  # Increment time step
     fps.tick(snake_speed)  # Control game speed
-    

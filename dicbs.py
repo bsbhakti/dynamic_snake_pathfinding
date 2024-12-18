@@ -22,7 +22,7 @@ def slpa_search(start, goal, env, constraints=None, start_time=0):
             next_time = current_time + 1
             neighbor_state = (neighbor, next_time)
 
-            if not env.is_valid(neighbor):
+            if not env.is_valid(neighbor):  # Check for static obstacles
                 continue
 
             if constraints and is_constrained(neighbor, next_time, constraints):
@@ -82,7 +82,6 @@ def detect_conflicts(paths):
             positions_at_time[position].append((agent_id, t))
 
         for position, agents_and_times in positions_at_time.items():
-            # Vertex conflicts
             if len(agents_and_times) > 1:
                 for i in range(len(agents_and_times)):
                     for j in range(i + 1, len(agents_and_times)):
@@ -103,16 +102,6 @@ def detect_conflicts(paths):
                         if current_pos == other_next_pos and next_pos == other_current_pos:
                             conflicts.append(('edge', agent_id, other_id, (current_pos, next_pos), t + 1))
 
-        # Detect waiting conflicts
-        for agent_id, path in enumerate(paths):
-            if t < len(path) and t + 1 < len(path):
-                position = path[t][0]
-                if position == path[t + 1][0]:  # Agent is waiting
-                    for other_id, other_path in enumerate(paths):
-                        if other_id != agent_id and t + 1 < len(other_path):
-                            other_position = other_path[t + 1][0]
-                            if other_position == position:  # Another agent wants to pass through
-                                conflicts.append(('waiting', agent_id, other_id, position, t + 1))
     return conflicts
 
 def cbs_h2(agents, goals, env, constraints_per_agent):
@@ -154,7 +143,7 @@ def dicbs(agents, goals, env, dynamic_obstacles, alpha=3):
             conflicts = detect_conflicts(paths)
             if not conflicts:
                 t += 1
-                continue  # Ensure the loop continues until max_time
+                continue
         else:
             EC = EC_t.copy()
 
@@ -171,18 +160,12 @@ def dicbs(agents, goals, env, dynamic_obstacles, alpha=3):
         conflicts = detect_conflicts(paths)
         for conflict_type, agent1, agent2, conflict_data, time in conflicts:
             if conflict_type == 'vertex':
-                # Vertex conflict: two agents occupying the same position
                 constraints[agent1].add((conflict_data, time))
                 constraints[agent2].add((conflict_data, time+1))
             elif conflict_type == 'edge':
-                # Edge conflict: two agents swapping positions
                 current_pos, next_pos = conflict_data
                 constraints[agent1].add(((current_pos, next_pos), time))
                 constraints[agent2].add(((next_pos, current_pos), time))
-            elif conflict_type == 'waiting':
-                # Waiting conflict: agent1 is waiting, agent2 wants to pass through
-                constraints[agent1].add((conflict_data, time))  # Prevent agent1 from waiting
-                constraints[agent2].add((conflict_data, time))  # Prevent agent2 from entering at the same time
             affected_agents.update([agent1, agent2])
 
         for agent_id in affected_agents:
@@ -205,20 +188,9 @@ def dicbs(agents, goals, env, dynamic_obstacles, alpha=3):
         ECT['Root']['paths'] = [path.copy() for path in paths]
         t += 1
 
-    if not validate_paths_against_obstacles(paths, dynamic_obstacles):
-        return None
+    for path in paths:
+        for position, _ in path:
+            if not env.is_valid(position):
+                return None
 
     return paths
-
-def validate_paths_against_obstacles(paths, dynamic_obstacles):
-    """Validate that the computed paths respect all dynamic obstacle constraints."""
-    obstacle_constraints = {}
-    for position, start_time, duration in dynamic_obstacles:
-        for t in range(start_time, start_time + duration):
-            obstacle_constraints[(position, t)] = True
-
-    for path in paths:
-        for position, time in path:
-            if (position, time) in obstacle_constraints:
-                return False
-    return True
