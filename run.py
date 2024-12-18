@@ -2,8 +2,8 @@ import json
 import time
 from instances import scenarios
 from dicbs import dicbs
-from snakeProblem import SnakeProblem
 
+# Define the GridEnvironment class
 class GridEnvironment:
     def __init__(self, grid):
         self.grid = grid
@@ -13,6 +13,7 @@ class GridEnvironment:
     def is_valid(self, position):
         x, y = position
         return 0 <= x < self.rows and 0 <= y < self.cols and self.grid[x][y] == 0
+
 
 results = []
 
@@ -26,14 +27,13 @@ for i, scenario in enumerate(scenarios):
     ]
     grid = scenario["grid"]
     
+    # Instantiate GridEnvironment
     env = GridEnvironment(grid)
 
     # Measure time taken by dicbs
     start_time = time.time()
 
-    problem = SnakeProblem(env,agents, goals, dynamic_obstacles)
-    paths = problem.find_solution()
-    # paths = dicbs(agents, goals, env, dynamic_obstacles)
+    paths = dicbs(agents, goals, env, dynamic_obstacles)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
@@ -55,7 +55,6 @@ for i, scenario in enumerate(scenarios):
         "paths": agent_paths,
         "time_taken": elapsed_time
     })
-    break
 
 # Write results to JSON (flat format)
 output_file = "results.json"
