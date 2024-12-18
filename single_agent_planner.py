@@ -97,10 +97,6 @@ def build_constraint_table(constraints, agent, isCbs):
                 constraint_table = put_in_table(constraint_table, constraint['timestep'], constraint['loc'],'edge',main_type)
 
 
-    # d = {}
-    # d[constraints["loc"]] = agent
-    # constraint_table[constraints["timestep"]]= d
-    # #print("TABLE")
     print(constraint_table)
     return constraint_table
 

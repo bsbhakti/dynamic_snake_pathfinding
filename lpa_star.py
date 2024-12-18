@@ -178,14 +178,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
             if itr > 100:
                 #print("Max iterations reached, terminating.")
                 return path
-            ##print("Iteration inside replan", itr)
-            # ##print(f"Calling shortest path at time {time}", agent_constraints, goal_loc)
-            # if(not replan or itr != 0):
-            #     goal_time =  compute_shortest_path(agent_constraints,time)
-            #     ##print("Shortest path computation done.")
-            #     path = createPath(goal_loc,goal_time,agent_constraints)
-            #     ##print(path)
-            #     return
+           
             if(replan):
                 #print("Top Key in open_list: ", top_key(open_list))
                 if(top_key(open_list) == (float('inf'), float('inf'))):
@@ -293,9 +286,3 @@ def update(open_list, node, priority):
 def compare_nodes(n1, n2):
     """Return true is n1 is better than n2."""
     return n1['g_val'] + n1['h_val'] < n2['g_val'] + n2['h_val']
-
-
-
-
-#get all successors returns the actual pos and the obstructed pos. 
-# the obs pos will then be set to inf

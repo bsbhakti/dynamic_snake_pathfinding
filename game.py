@@ -25,20 +25,7 @@ for i in range(50):
         for k in range (len(my_map[j])):
             if my_map[j][k] == 1:
                 dynamic_obstacles.append(((j,k),0,float('inf')))
-                # dynamic_obstacles.append(((j,k),0,100))
 
-    # dynamic_obstacles = []
-
-    # for j in range (len(scenarios[i]['dynamic_obstacles'])):
-    #     dynamic_obstacles.append((scenarios[i]['dynamic_obstacles'][j]['position'], scenarios[i]['dynamic_obstacles'][j]['start_time'], scenarios[i]['dynamic_obstacles'][j]['duration']))
-    # max_time = max(start_time + duration for _, start_time, duration in dynamic_obstacles)
-
-    # for j in range (len(my_map)):
-    #     for k in range (len(my_map[j])):
-    #         if my_map[j][k] == 1:
-    #             dynamic_obstacles.append(((j,k),0,len(my_map)*len(my_map[j])))
-                # dynamic_obstacles.append(((j,k),0,100))
-                
     # Print agent start and goal positions
     print("Start Agent 1: ", starts_1)
     print("Goal Agent 1: ", goals_1)

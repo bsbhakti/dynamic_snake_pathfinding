@@ -270,17 +270,12 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,max_time,problem ,alpha=3
             'constraints':  {agent_id: constraints[agent_id].copy() for agent_id in constraints},
             'paths': [path.copy() for path in root_paths],
             'agent_states': [agent_state.copy() for agent_state in root_states ]if root_states else []}
-    # ECT['Root'] = {
-    #     'cost': sum(len(path) for path in paths),
-    #     'constraints': {agent_id: constraints[agent_id].copy() for agent_id in constraints},
-    #     'paths': [path.copy() for path in paths]
-    # }
+    
     node["collisions"] = detect_collisions(root_paths)
     num_of_generated =  push_node(ECT,node, num_of_generated)
     #print("root pushed ", len(ECT))
 
 
-    # max_time = max(start_time + duration for _, start_time, duration in dynamic_obstacles)
     env_cons = {}
 
 
@@ -295,15 +290,9 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,max_time,problem ,alpha=3
         if not EC_t and t > 0:
             if(node["collisions"] == []):              
                 print("no conflict and env change")
-                # num_of_generated = push_node(ECT,newNode, num_of_generated)
-                # t += 1
-                # continue  # Ensure the loop continues until max_time
-            #if you have collisions you need to add constraints??
 
         else:
             EC = EC_t.copy()
-
-        # new_constraints = {agent_id: constraints[agent_id].copy() for agent_id in constraints}
 
         # #print("this is ECT ", EC_t)
         # #print("affected agent before ", affected_agents)
@@ -406,13 +395,6 @@ def dicbs(agents, goals, heuristics, dynamic_obstacles,max_time,problem ,alpha=3
                 # #print("no collisions and no collision with obstacles pushing the same node we popped rn", newNode["cost"], newNode["constraints"], newNode["paths"])
                 num_of_generated = push_node(ECT,newNode, num_of_generated)
 
-
-       
-        # collisions = detect_collisions(paths)
-        # #print("collisions in the new path ", collisions)
-        # constraints = new_constraints
-        # ECT['Root']['constraints'] = {agent_id: constraints[agent_id].copy() for agent_id in constraints}
-        # ECT['Root']['paths'] = [path.copy() for path in paths]
         t += 1
     #print("end the thing ",t ,len(ECT), node["paths"], node["constraints"])
 

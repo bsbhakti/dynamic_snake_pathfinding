@@ -64,14 +64,6 @@ class SnakeProblem:
 
     
     def get_all_successors(self, loc,agent_cons, curr_time = 0):
-        # if time == 9000:
-        #     succ = self.possible_moves(loc)
-        #     if((1,2) in succ):
-        #         succ.remove((1,2))
-        #     # print("these are all the succ1 ", succ)
-
-        #     return succ
-        # print("this is agent cons", agent_cons)
 
         succ = self.possible_moves(loc)
         invalid_succ = []
@@ -85,13 +77,6 @@ class SnakeProblem:
         return (succ,invalid_succ)
 
     def get_all_predecessors(self, loc,agent_cons, time = 0):
-        # if time == 9000:
-        #     succ = self.possible_moves(loc)
-        #     if((1,2) in succ):
-        #         succ.remove((1,2))
-        #     # print("these are all the succ1 ", succ)
-
-        #     return succ
 
         succ = self.possible_moves(loc)
         invalid_succ = []
@@ -108,24 +93,6 @@ class SnakeProblem:
         paths = dicbs(self.starts, self.goals,self.heuristics, self.dynamic_obstacles,self.max_time, self,3, True)
         return paths
     
-
-
-        # for i in range(self.num_of_agents):  # Find path for each agent
-        #         lpa_star(self,self.starts[i],self.goals[i],i,self.heuristics[i])
-                # if path is None:
-                #     raise BaseException('No solutions')
-                # result.append(path)
-
-            ##############################
-
-            # self.CPU_time = timer.time() - start_time
-
-            # print("\n Found a solution! \n")
-            # print("CPU time (s):    {:.2f}".format(self.CPU_time))
-            # # print("Sum of costs:    {}".format(get_sum_of_cost(result)))
-
-            # return result
-
 
 
 
