@@ -1,7 +1,6 @@
 import json
 import time
 from instances import scenarios
-from dicbs import dicbs
 from snakeProblem import SnakeProblem
 
 class GridEnvironment:

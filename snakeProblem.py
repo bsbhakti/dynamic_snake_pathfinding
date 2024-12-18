@@ -104,7 +104,7 @@ class SnakeProblem:
     def find_solution(self):
            # Measure time taken by dicbs
        
-        paths = dicbs(self.starts, self.goals,self.heuristics, self.dynamic_obstacles, self)
+        paths = dicbs(self.starts, self.goals,self.heuristics, self.dynamic_obstacles, self,3, True)
         return paths
     
 

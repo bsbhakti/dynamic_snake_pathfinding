@@ -37,7 +37,7 @@ def lpa_star(start_loc, goal_loc,problem, agent_id, heuristics, agent_constraint
 
     vertex_cons = {}
     edge_cons = {}
-    ##print("received this cons for agent isnide lpa ", agent_id, agent_constraints, start_loc)
+    print("received this cons for agent isnide lpa ", agent_id, agent_constraints, start_loc, heuristics)
     h_values = heuristics[agent_id]
     if(agent_constraints):
         agent_constraints = agent_constraints["negative"] #JUST EXTRACTING NEGATIVE FOR NOW
