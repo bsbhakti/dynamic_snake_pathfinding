@@ -16,8 +16,12 @@ goals_1 = scenarios[i]['goals'][0]
 starts_2 = scenarios[i]['agents'][1]
 goals_2 = scenarios[i]['goals'][1]
 my_map = scenarios[i]['grid']
-dynamic_obstacles = [(scenarios[i]['dynamic_obstacles'][0]['position'], scenarios[i]['dynamic_obstacles'][0]['start_time'], scenarios[i]['dynamic_obstacles'][0]['duration'])]
 
+dynamic_obstacles = []
+
+for j in range (len(scenarios[i]['dynamic_obstacles'])):
+    dynamic_obstacles.append((scenarios[i]['dynamic_obstacles'][j]['position'], scenarios[i]['dynamic_obstacles'][j]['start_time'], scenarios[i]['dynamic_obstacles'][j]['duration']))
+    
 for j in range (len(my_map)):
     for k in range (len(my_map[j])):
         if my_map[j][k] == 1:
@@ -91,6 +95,8 @@ def game_over():
 # Initialize GridEnvironment
 env = GridEnvironment(my_map)
 
+# bp()
+
 # Call dicbs for paths
 agents_1 = [(prev_fruit_position_1[1] // block_size, prev_fruit_position_1[0] // block_size)]
 goals_1 = [(fruit_position_1[1] // block_size, fruit_position_1[0] // block_size)]
@@ -98,6 +104,7 @@ goals_1 = [(fruit_position_1[1] // block_size, fruit_position_1[0] // block_size
 agents_2 = [(prev_fruit_position_2[1] // block_size, prev_fruit_position_2[0] // block_size)]
 goals_2 = [(fruit_position_2[1] // block_size, fruit_position_2[0] // block_size)]
 
+# bp()
 # result = SnakeProblem(env, [agents_1[0], agents_2[0]], [goals_1[0], goals_2[0]], dynamic_obstacles).find_solution()
 result = dicbs([agents_1[0], agents_2[0]], [goals_1[0], goals_2[0]], env, dynamic_obstacles)
 
