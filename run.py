@@ -20,17 +20,26 @@ for i, scenario in enumerate(scenarios):
     print(f"\nProcessing Scenario {i+1}")
     agents = scenario["agents"]
     goals = scenario["goals"]
+    my_map = scenarios[i]['grid']
     dynamic_obstacles = [
         (item["position"], item["start_time"], item["duration"]) for item in scenario["dynamic_obstacles"]
     ]
+    max_time = max(start_time + duration for _, start_time, duration in dynamic_obstacles)
+
+
     grid = scenario["grid"]
     
     env = GridEnvironment(grid)
 
+    for j in range (len(my_map)):
+        for k in range (len(my_map[j])):
+            if my_map[j][k] == 1:
+                dynamic_obstacles.append(((j,k),0,float('inf')))
+
     # Measure time taken by dicbs
     start_time = time.time()
 
-    problem = SnakeProblem(env,agents, goals, dynamic_obstacles)
+    problem = SnakeProblem(env,agents, goals, dynamic_obstacles, max_time)
     paths = problem.find_solution()
     # paths = dicbs(agents, goals, env, dynamic_obstacles)
 
@@ -54,7 +63,7 @@ for i, scenario in enumerate(scenarios):
         "paths": agent_paths,
         "time_taken": elapsed_time
     })
-    break
+    # break
 
 # Write results to JSON (flat format)
 output_file = "results.json"

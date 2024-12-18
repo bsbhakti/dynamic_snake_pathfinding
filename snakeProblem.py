@@ -5,7 +5,7 @@ from dicbs import dicbs
 
 
 class SnakeProblem:
-    def __init__(self,map, agents, goals, dynamic_obstacles):
+    def __init__(self,map, agents, goals, dynamic_obstacles,max_time):
         self.map = map
         self.goals = goals # change this to be the fruit position
         self.starts = agents  # change this to be the snake position
@@ -13,6 +13,7 @@ class SnakeProblem:
         self.maxX = self.map.rows
         self.maxY = self.map.cols
         self.dynamic_obstacles = dynamic_obstacles
+        self.max_time = max_time
         
 
         # compute heuristics for the low-level search
@@ -103,8 +104,8 @@ class SnakeProblem:
 
     def find_solution(self):
            # Measure time taken by dicbs
-       
-        paths = dicbs(self.starts, self.goals,self.heuristics, self.dynamic_obstacles, self,3, True)
+        print("dynamic obs in find", self.dynamic_obstacles)
+        paths = dicbs(self.starts, self.goals,self.heuristics, self.dynamic_obstacles,self.max_time, self,3, True)
         return paths
     
 
